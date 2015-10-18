@@ -10,7 +10,6 @@ CDXGIManager::CDXGIManager()
 	m_pContext = 0;
 	m_pSwapChain = 0;
 	m_pBackBuffer = 0;
-
 }
 
 
@@ -121,7 +120,7 @@ bool CDXGIManager::Initialize(
 
 ID3D11ComputeShader* CDXGIManager::CompileCS(wchar_t* pszFileName, char* pszEntryPoint)
 {
-	ID3D10Blob* pIL = NULL; //Bytecode del swhader en DXIL
+	ID3D10Blob* pIL = NULL; //Bytecode del shader en DXIL
 	ID3D10Blob* pErrors = NULL; //Error log buffer
 	ID3D11ComputeShader* pCS = NULL; //The complete shader!!!
 
