@@ -313,11 +313,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSALU->Configure(CCSALU::ALU_NEG);
 		g_pCSALU->Execute();*/
 
-		//ALU_AND
-		g_pCSALU->m_pInput_1 = pIntermedio_1;
+		//ALU
+		/*g_pCSALU->m_pInput_1 = pIntermedio_1;
 		g_pCSALU->m_pInput_2 = g_pSource;
 		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
-		g_pCSALU->Configure(CCSALU::ALU_MERGE);
+		g_pCSALU->Configure(ALU_MERGE);
+		g_pCSALU->Execute();*/
+
+		//ALU_Thresholds
+		g_pCSALU->m_pInput_1 = pIntermedio_1;
+		g_pCSALU->m_pInput_2 = g_pSource;
+		//g_pCSALU->m_Params.m_Threshold = { 0,0,0,0 };
+		g_pCSALU->m_Params.Threshold = 0.4;
+		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
+		g_pCSALU->Configure(ALU_HP_THRESHOLD);
 		g_pCSALU->Execute();
 
 		//Liberar toda memoria intermedia al terminar de procesar

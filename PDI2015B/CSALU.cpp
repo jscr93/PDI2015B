@@ -21,25 +21,77 @@ CCSALU::CCSALU(CDXGIManager *pOwner)
 	m_pInput_1 = 0;
 	m_pInput_2 = 0;
 	m_pOutput = 0;
+	m_pCB = 0;
 	m_pOwner = pOwner;
 }
 
 bool CCSALU::Initialize()
 {
-	if (!(m_pCS_Copy =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_Copy.hlsl", "Main"))) return false;
-	if (!(m_pCS_Neg =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_Neg.hlsl", "Main"))) return false;
-	if (!(m_pCS_AND =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_AND.hlsl", "Main"))) return false;
-	if (!(m_pCS_OR =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_OR.hlsl", "Main"))) return false;
-	if (!(m_pCS_XOR =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_XOR.hlsl", "Main"))) return false;
-	if (!(m_pCS_SADD =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_SADD.hlsl", "Main"))) return false;
-	if (!(m_pCS_SSUB =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_SSUB.hlsl", "Main"))) return false;
-	if (!(m_pCS_MOD =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_MOD.hlsl", "Main"))) return false;
-	if (!(m_pCS_ALPHAS0 =		m_pOwner->CompileCS(L"..\\Shaders\\ALU_ALPHAS0.hlsl", "Main"))) return false;
-	if (!(m_pCS_ALPHAS1 =		m_pOwner->CompileCS(L"..\\Shaders\\ALU_ALPHAS1.hlsl", "Main"))) return false;
-	/*if (!(m_pCS_HP_TRESHOLD =	m_pOwner->CompileCS(L"..\\Shaders\\ALU_HP_THRESHOLD.hlsl", "Main"))) return false;
-	if (!(m_pCS_LP_THRESHOLD =	m_pOwner->CompileCS(L"..\\Shaders\\ALU_LP_THRESHOLD.hlsl", "Main"))) return false;*/
-	if (!(m_pCS_MERGE =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_MERGE.hlsl", "Main"))) return false;
+	if (!(m_pCS_Copy =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_Copy.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_Neg =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_Neg.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_AND =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_AND.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_OR =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_OR.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_XOR =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_XOR.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_SADD =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_SADD.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_SSUB =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_SSUB.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_MOD =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_MOD.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_ALPHAS0 =		m_pOwner->CompileCS(L"..\\Shaders\\ALU_ALPHAS0.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_ALPHAS1 =		m_pOwner->CompileCS(L"..\\Shaders\\ALU_ALPHAS1.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_HP_TRESHOLD =	m_pOwner->CompileCS(L"..\\Shaders\\ALU_HP_THRESHOLD.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_LP_THRESHOLD =	m_pOwner->CompileCS(L"..\\Shaders\\ALU_LP_THRESHOLD.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
+	if (!(m_pCS_MERGE =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_MERGE.hlsl", "Main"))) {
+		ReleaseShaders();
+		return false;
+	}
 
+	D3D11_BUFFER_DESC dbd;
+	memset(&dbd, 0, sizeof(dbd));
+	dbd.ByteWidth = 16 * ((sizeof(PARAMS) + 15) / 16); //multiplos 128 bits o 16 bytes
+	dbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	dbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	dbd.Usage = D3D11_USAGE_DYNAMIC;
+	HRESULT hr = m_pOwner->GetDevice()->CreateBuffer(&dbd, NULL, &m_pCB);
+	if (FAILED(hr))
+	{
+		ReleaseShaders();
+		return false;
+	}
 	return true;
 }
 
@@ -53,19 +105,19 @@ bool CCSALU::Configure(ALU_OPERATION op)
 
 	switch (op)
 	{
-	case CCSALU::ALU_COPY:			m_pCS = &m_pCS_Copy; multipleArgs = false; break;
-	case CCSALU::ALU_NEG:			m_pCS = &m_pCS_Neg; multipleArgs = false; break;
-	case CCSALU::ALU_AND:			m_pCS = &m_pCS_AND; break;
-	case CCSALU::ALU_OR:			m_pCS = &m_pCS_OR; break;
-	case CCSALU::ALU_XOR:			m_pCS = &m_pCS_XOR; break;
-	case CCSALU::ALU_SADD:			m_pCS = &m_pCS_SADD; break;
-	case CCSALU::ALU_SSUB:			m_pCS = &m_pCS_SSUB; break;
-	case CCSALU::ALU_MOD:			m_pCS = &m_pCS_MOD; break;
-	case CCSALU::ALU_ALPHAS0:		m_pCS = &m_pCS_ALPHAS0; break;
-	case CCSALU::ALU_ALPHAS1:		m_pCS = &m_pCS_ALPHAS1; break;
-	case CCSALU::ALU_HP_THRESHOLD:	m_pCS = &m_pCS_HP_TRESHOLD; break;
-	case CCSALU::ALU_LP_THRESHOLD:	m_pCS = &m_pCS_LP_THRESHOLD; break;
-	case CCSALU::ALU_MERGE:			m_pCS = &m_pCS_MERGE; break;
+	case ALU_COPY:			m_pCS = &m_pCS_Copy; multipleArgs = false; break;
+	case ALU_NEG:			m_pCS = &m_pCS_Neg; multipleArgs = false; break;
+	case ALU_AND:			m_pCS = &m_pCS_AND; break;
+	case ALU_OR:			m_pCS = &m_pCS_OR; break;
+	case ALU_XOR:			m_pCS = &m_pCS_XOR; break;
+	case ALU_SADD:			m_pCS = &m_pCS_SADD; break;
+	case ALU_SSUB:			m_pCS = &m_pCS_SSUB; break;
+	case ALU_MOD:			m_pCS = &m_pCS_MOD; break;
+	case ALU_ALPHAS0:		m_pCS = &m_pCS_ALPHAS0; break;
+	case ALU_ALPHAS1:		m_pCS = &m_pCS_ALPHAS1; break;
+	case ALU_HP_THRESHOLD:	m_pCS = &m_pCS_HP_TRESHOLD; UpdateConstantBuffer(); break;
+	case ALU_LP_THRESHOLD:	m_pCS = &m_pCS_LP_THRESHOLD; UpdateConstantBuffer(); break;
+	case ALU_MERGE:			m_pCS = &m_pCS_MERGE; break;
 	default: return false;
 	}
 
@@ -103,7 +155,19 @@ void CCSALU::Execute()
 	m_pOwner->GetContext()->ClearState();//reset GPU and free all references
 }
 
-CCSALU::~CCSALU()
+void CCSALU::UpdateConstantBuffer()
+{
+	//Actualizacion del constant buffer
+	PARAMS Params = m_Params;
+	D3D11_MAPPED_SUBRESOURCE ms;
+	m_pOwner->GetContext()->Map(m_pCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms);
+	memcpy(ms.pData, &Params, sizeof(PARAMS));
+	m_pOwner->GetContext()->Unmap(m_pCB, 0);
+	//usar el constant buffer
+	m_pOwner->GetContext()->CSSetConstantBuffers(0, 1, &m_pCB);
+}
+
+void CCSALU::ReleaseShaders()
 {
 	SAFE_RELEASE(m_pCS_Copy);
 	SAFE_RELEASE(m_pCS_Neg);
@@ -119,3 +183,10 @@ CCSALU::~CCSALU()
 	SAFE_RELEASE(m_pCS_LP_THRESHOLD);
 	SAFE_RELEASE(m_pCS_MERGE);
 }
+
+CCSALU::~CCSALU()
+{
+	ReleaseShaders();
+	SAFE_RELEASE(m_pCB);
+}
+
