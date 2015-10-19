@@ -13,7 +13,13 @@ protected:
 	IDXGISwapChain* m_pSwapChain; //Cadena de intercambio
 
 	ID3D11Texture2D* m_pBackBuffer; //BackBuffer en swapchain
+
 public:
+	struct PIXEL
+	{
+		unsigned char r, g, b, a;
+	};
+
 	bool Initialize(HWND hWnd, IDXGIAdapter* pAdapter, bool bFullScreen);
 	ID3D11ComputeShader* CompileCS(wchar_t* pszFileName, char* pszEntryPoint);
 	void Unitialize(void);
@@ -26,7 +32,7 @@ public:
 	ID3D11Texture2D* LoadTexture(
 		char* pszFileName, 
 		int nMipMapLevels=-1, 
-		unsigned long (*pPixel)(unsigned long) = NULL);
+		PIXEL (*pPixel)(PIXEL) = NULL);
 	CDXGIManager();
 	~CDXGIManager();
 };

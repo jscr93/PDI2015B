@@ -28,6 +28,8 @@ BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
+CDXGIManager::PIXEL alpha(CDXGIManager::PIXEL);
+
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
 	_In_ LPTSTR    lpCmdLine,
@@ -137,7 +139,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	if (!g_pCSALU->Initialize())
 		return FALSE;
 
-	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp");
+	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp",-1,alpha);
 
 
 
@@ -166,6 +168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static float s_fTime = 0;
 	static float s_fScale = 1.0f;
 	static float s_fTheta = 0;
+	static int ALU_op = -1;
 	static int s_mnx, s_mny, s_fInterpolation = 0;
 	switch (message)
 	{
@@ -187,6 +190,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case 'I':
 			s_fInterpolation = ~s_fInterpolation;
+			break;
+		case 'U':
+			if(ALU_op<12)
+				ALU_op++;
+			break;
+		case 'D':
+			if (ALU_op>-1)
+				ALU_op--;
 			break;
 		}
 	}
@@ -235,6 +246,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//Necesito crear todas las variables temporales que requiera
 		//la tuberia.
 
+		ID3D11Texture2D* pIntermedio;
 		ID3D11Texture2D* pIntermedio_1;
 		ID3D11Texture2D* pIntermedio_2;
 		D3D11_TEXTURE2D_DESC dtd;
@@ -243,6 +255,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pIntermedio_1);
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pIntermedio_2);
+		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pIntermedio);
 
 		//Procesar
 		g_pCSDefault->m_pInput = g_pSource;
@@ -256,49 +269,49 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSDefault->Execute(); 
 
 		#pragma region Convolve
-		//g_pCSConvolve->m_pInput = pIntermedio;
-		//g_pCSConvolve->m_pOutput = g_Manager.GetBackBuffer();
-		//MATRIX4D Kernel = { 1,1,1,0,
-		//					0,0,0,0,
-		//					-1,-1,-1,0,
-		//					0,0,0,0 };
+		g_pCSConvolve->m_pInput = g_pSource;
+		g_pCSConvolve->m_pOutput = pIntermedio;
+		MATRIX4D Kernel = { 1,1,1,0,
+							0,0,0,0,
+							-1,-1,-1,0,
+							0,0,0,0 };
 
-		//MATRIX4D KernelIdentity = { 0,0,0,0,
-		//							0,1,0,0,
-		//							0,0,0,0,
-		//							0,0,0,0 }; // C=0 o cualquier valor
+		MATRIX4D KernelIdentity = { 0,0,0,0,
+									0,1,0,0,
+									0,0,0,0,
+									0,0,0,0 }; // C=0 o cualquier valor
 
-		//MATRIX4D KernelInvert = { 0,0,0,0,
-		//							0,-1,0,0,
-		//							0,0,0,0,
-		//							0,0,0,0 }; // C=1
+		MATRIX4D KernelInvert = { 0,0,0,0,
+									0,-1,0,0,
+									0,0,0,0,
+									0,0,0,0 }; // C=1
 
-		//MATRIX4D KernelSoft = { 1/9.0f,1/9.0f,1/9.0f,0,
-		//						1/9.0f,1/9.0f,1/9.0f,0,
-		//						1/9.0f,1/9.0f,1/9.0f,0,
-		//						0,0,0,0 };
+		MATRIX4D KernelSoft = { 1/9.0f,1/9.0f,1/9.0f,0,
+								1/9.0f,1/9.0f,1/9.0f,0,
+								1/9.0f,1/9.0f,1/9.0f,0,
+								0,0,0,0 };
 
-		//MATRIX4D KernelLaplace = { 0, -1/8.0f,  0, 0,
-		//						-1/8.0f, 1/2.0f, -1/8.0f, 0,
-		//						0, -1/8.0f, 0, 0,
-		//						0, 0 , 0, 0};//C=0.5
+		MATRIX4D KernelLaplace = { 0, -1/8.0f,  0, 0,
+								-1/8.0f, 1/2.0f, -1/8.0f, 0,
+								0, -1/8.0f, 0, 0,
+								0, 0 , 0, 0};//C=0.5
 
-		//MATRIX4D KernelEmbossV = { -1, -1, -1, 0,
-		//						  0, 0, 0, 0,
-		//						  1, 1, 1, 1,
-		//						  0, 0, 0, 0 };//C = 0.5
+		MATRIX4D KernelEmbossV = { -1, -1, -1, 0,
+								  0, 0, 0, 0,
+								  1, 1, 1, 1,
+								  0, 0, 0, 0 };//C = 0.5
 
-		//float Strength = fabs(cos(s_fTime));
-		//float c = 1 - Strength;
-		//MATRIX4D KernelSharp = { 0, c , 0, 0,
-		//						 c, 1, -c, 0,
-		//						  0, -c, 0, 0,
-		//						  0, 0, 0, 0 };//C = 0
+		float Strength = fabs(cos(s_fTime));
+		float c = 1 - Strength;
+		MATRIX4D KernelSharp = { 0, c , 0, 0,
+								 c, 1, -c, 0,
+								  0, -c, 0, 0,
+								  0, 0, 0, 0 };//C = 0
 
-		//g_pCSConvolve->m_Params.Kernel = KernelSharp;
-		//g_pCSConvolve->m_Params.C = 0;
-		//g_pCSConvolve->Configure();
-		//g_pCSConvolve->Execute();
+		g_pCSConvolve->m_Params.Kernel = KernelSharp;
+		g_pCSConvolve->m_Params.C = 0;
+		g_pCSConvolve->Configure();
+		g_pCSConvolve->Execute();
 		#pragma endregion
 
 		//ALU_Copy
@@ -322,14 +335,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		//ALU_Thresholds
 		g_pCSALU->m_pInput_1 = pIntermedio_1;
-		g_pCSALU->m_pInput_2 = g_pSource;
+		g_pCSALU->m_pInput_2 = pIntermedio;
 		//g_pCSALU->m_Params.m_Threshold = { 0,0,0,0 };
 		g_pCSALU->m_Params.Threshold = 0.4;
 		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
-		g_pCSALU->Configure(ALU_HP_THRESHOLD);
+		g_pCSALU->Configure((ALU_OPERATION)ALU_op);
 		g_pCSALU->Execute();
 
 		//Liberar toda memoria intermedia al terminar de procesar
+		SAFE_RELEASE(pIntermedio);
 		SAFE_RELEASE(pIntermedio_1);
 		SAFE_RELEASE(pIntermedio_2);
 		g_Manager.GetSwapChain()->Present(1, 0);//T-1 sync
@@ -365,3 +379,9 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	return (INT_PTR)FALSE;
 }
 
+CDXGIManager::PIXEL alpha(CDXGIManager::PIXEL p)
+{
+	CDXGIManager::PIXEL pAlpha = p;
+	pAlpha.a = p.b;
+	return pAlpha;
+}

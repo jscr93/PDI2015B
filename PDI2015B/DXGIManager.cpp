@@ -158,12 +158,8 @@ ID3D11ComputeShader* CDXGIManager::CompileCS(wchar_t* pszFileName, char* pszEntr
 
 ID3D11Texture2D* CDXGIManager::LoadTexture(
 	char* pszFileName,
-	int nMipMapLevels, unsigned long(*pPixel)(unsigned long))
+	int nMipMapLevels, PIXEL (*pPixel)(PIXEL))
 {
-	struct PIXEL
-	{
-		unsigned char r, g, b, a;
-	};
 
 	fstream in;
 	in.open(pszFileName, ios::in | ios::binary);
@@ -346,7 +342,8 @@ ID3D11Texture2D* CDXGIManager::LoadTexture(
 						Color.g = pRow[byteNumberInRow++];
 						Color.r = pRow[byteNumberInRow++];
 						Color.a = 0xff;
-						pLine[pixelNumberInRow] = Color;
+						//pLine[pixelNumberInRow] = Color;
+						pLine[pixelNumberInRow] = (pPixel == NULL) ? Color : pPixel(Color);
 					}
 				}
 

@@ -115,10 +115,10 @@ bool CCSALU::Configure(ALU_OPERATION op)
 	case ALU_MOD:			m_pCS = &m_pCS_MOD; break;
 	case ALU_ALPHAS0:		m_pCS = &m_pCS_ALPHAS0; break;
 	case ALU_ALPHAS1:		m_pCS = &m_pCS_ALPHAS1; break;
-	case ALU_HP_THRESHOLD:	m_pCS = &m_pCS_HP_TRESHOLD; UpdateConstantBuffer(); break;
-	case ALU_LP_THRESHOLD:	m_pCS = &m_pCS_LP_THRESHOLD; UpdateConstantBuffer(); break;
+	case ALU_HP_THRESHOLD:	m_pCS = &m_pCS_HP_TRESHOLD; multipleArgs = false; UpdateConstantBuffer(); break;
+	case ALU_LP_THRESHOLD:	m_pCS = &m_pCS_LP_THRESHOLD; multipleArgs = false;  UpdateConstantBuffer(); break;
 	case ALU_MERGE:			m_pCS = &m_pCS_MERGE; break;
-	default: return false;
+	default:				m_pCS = &m_pCS_Copy; multipleArgs = false; break;
 	}
 
 	ID3D11ShaderResourceView *pSRV[2] = { 0,0 };
