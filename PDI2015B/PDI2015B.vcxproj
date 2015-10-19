@@ -149,6 +149,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CSALU.h" />
     <ClInclude Include="CSConvolve.h" />
     <ClInclude Include="CSDefault.h" />
     <ClInclude Include="DXGIManager.h" />
@@ -159,6 +160,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CSALU.cpp" />
     <ClCompile Include="CSConvolve.cpp" />
     <ClCompile Include="CSDefault.cpp" />
     <ClCompile Include="DXGIManager.cpp" />
