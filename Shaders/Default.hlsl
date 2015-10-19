@@ -10,12 +10,12 @@ cbuffer PARAMS
 
 Texture2D<float4>	Input:register(t0);		// SRV
 RWTexture2D<float4>	Output:register(u0);	// UAV
-SamplerState		Sampler:register(s0);  //Por default es bilineal.
+//SamplerState		Sampler:register(s0);  //Por default es bilineal.
 //Todo lo que termine en state es una pieza de hardware. No es programable, es configurable
 
 float4 BilinearSampler(float2 uv)
 {
-	uv -= float2(0.5, 0.5);//moverse al centro del pixel
+	uv -= float2(0.5f, 0.5f);//moverse al centro del pixel
 
 	int2 ij = int2(uv);
 	float2 pq = uv - ij;

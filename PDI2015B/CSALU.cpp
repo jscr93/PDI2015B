@@ -24,11 +24,6 @@ CCSALU::CCSALU(CDXGIManager *pOwner)
 	m_pOwner = pOwner;
 }
 
-
-CCSALU::~CCSALU()
-{
-}
-
 bool CCSALU::Initialize()
 {
 	if (!(m_pCS_Copy =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_Copy.hlsl", "Main"))) return false;
@@ -86,6 +81,10 @@ bool CCSALU::Configure(ALU_OPERATION op)
 	m_pOwner->GetContext()->CSSetUnorderedAccessViews(0, 1, &pUAV, NULL);
 
 	m_pOwner->GetContext()->CSSetShader(m_pCS, NULL, NULL);
+
+	SAFE_RELEASE(pSRV[0]);
+	SAFE_RELEASE(pSRV[1]);
+	SAFE_RELEASE(pUAV);
 	return true;
 }
 
@@ -99,4 +98,21 @@ void CCSALU::Execute()
 	m_pOwner->GetContext()->Dispatch(gx, gy, 1);
 	m_pOwner->GetContext()->Flush();//finish queued jobs and free temporal resources
 	m_pOwner->GetContext()->ClearState();//reset GPU and free all references
+}
+
+CCSALU::~CCSALU()
+{
+	SAFE_RELEASE(m_pCS_Copy);
+	SAFE_RELEASE(m_pCS_Neg);
+	SAFE_RELEASE(m_pCS_AND);
+	SAFE_RELEASE(m_pCS_OR);
+	SAFE_RELEASE(m_pCS_XOR);
+	SAFE_RELEASE(m_pCS_SADD);
+	SAFE_RELEASE(m_pCS_SSUB);
+	SAFE_RELEASE(m_pCS_MOD);
+	SAFE_RELEASE(m_pCS_ALPHAS0);
+	SAFE_RELEASE(m_pCS_ALPHAS1);
+	SAFE_RELEASE(m_pCS_HP_TRESHOLD);
+	SAFE_RELEASE(m_pCS_LP_THRESHOLD);
+	SAFE_RELEASE(m_pCS_MERGE);
 }

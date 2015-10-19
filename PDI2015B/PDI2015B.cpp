@@ -7,6 +7,7 @@
 #include "math.h"
 #include "CSDefault.h"
 #include "CSConvolve.h"
+#include "CSALU.h"
 
 #define MAX_LOADSTRING 100
 
@@ -18,6 +19,8 @@ CDXGIManager g_Manager;
 ID3D11Texture2D* g_pSource;
 CCSDefault *g_pCSDefault;
 CCSConvolve* g_pCSConvolve;			//Shader de convolucion
+CCSALU* g_pCSALU;
+
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -130,6 +133,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	if (!g_pCSConvolve->Initialize())
 		return FALSE;
 
+	g_pCSALU = new CCSALU(&g_Manager);
+	if (!g_pCSALU->Initialize())
+		return FALSE;
+
 	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp");
 
 
@@ -228,15 +235,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//Necesito crear todas las variables temporales que requiera
 		//la tuberia.
 
-		ID3D11Texture2D * pIntermedio = 0;
+		ID3D11Texture2D* pIntermedio_1;
+		ID3D11Texture2D* pIntermedio_2;
 		D3D11_TEXTURE2D_DESC dtd;
-		g_pSource->GetDesc(&dtd);
-		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS; //Buffers intermedios tener este bindflag
-		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pIntermedio);
+
+		g_Manager.GetBackBuffer()->GetDesc(&dtd);
+		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pIntermedio_1);
+		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pIntermedio_2);
 
 		//Procesar
 		g_pCSDefault->m_pInput = g_pSource;
-		g_pCSDefault->m_pOutput = pIntermedio;
+		g_pCSDefault->m_pOutput = pIntermedio_1;
 		MATRIX4D S = Scale(s_fScale, s_fScale, 1);
 		MATRIX4D R = RotationZ(s_fTheta);
 		MATRIX4D T = Translate(s_mnx, s_mny, 0);
@@ -245,52 +255,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSDefault->Configure();
 		g_pCSDefault->Execute(); 
 
-		g_pCSConvolve->m_pInput = pIntermedio;
-		g_pCSConvolve->m_pOutput = g_Manager.GetBackBuffer();
-		MATRIX4D Kernel = { 1,1,1,0,
-							0,0,0,0,
-							-1,-1,-1,0,
-							0,0,0,0 };
+		#pragma region Convolve
+		//g_pCSConvolve->m_pInput = pIntermedio;
+		//g_pCSConvolve->m_pOutput = g_Manager.GetBackBuffer();
+		//MATRIX4D Kernel = { 1,1,1,0,
+		//					0,0,0,0,
+		//					-1,-1,-1,0,
+		//					0,0,0,0 };
 
-		MATRIX4D KernelIdentity = { 0,0,0,0,
-									0,1,0,0,
-									0,0,0,0,
-									0,0,0,0 }; // C=0 o cualquier valor
+		//MATRIX4D KernelIdentity = { 0,0,0,0,
+		//							0,1,0,0,
+		//							0,0,0,0,
+		//							0,0,0,0 }; // C=0 o cualquier valor
 
-		MATRIX4D KernelInvert = { 0,0,0,0,
-									0,-1,0,0,
-									0,0,0,0,
-									0,0,0,0 }; // C=1
+		//MATRIX4D KernelInvert = { 0,0,0,0,
+		//							0,-1,0,0,
+		//							0,0,0,0,
+		//							0,0,0,0 }; // C=1
 
-		MATRIX4D KernelSoft = { 1/9.0f,1/9.0f,1/9.0f,0,
-								1/9.0f,1/9.0f,1/9.0f,0,
-								1/9.0f,1/9.0f,1/9.0f,0,
-								0,0,0,0 };
+		//MATRIX4D KernelSoft = { 1/9.0f,1/9.0f,1/9.0f,0,
+		//						1/9.0f,1/9.0f,1/9.0f,0,
+		//						1/9.0f,1/9.0f,1/9.0f,0,
+		//						0,0,0,0 };
 
-		MATRIX4D KernelLaplace = { 0, -1/8.0f,  0, 0,
-								-1/8.0f, 1/2.0f, -1/8.0f, 0,
-								0, -1/8.0f, 0, 0,
-								0, 0 , 0, 0};//C=0.5
+		//MATRIX4D KernelLaplace = { 0, -1/8.0f,  0, 0,
+		//						-1/8.0f, 1/2.0f, -1/8.0f, 0,
+		//						0, -1/8.0f, 0, 0,
+		//						0, 0 , 0, 0};//C=0.5
 
-		MATRIX4D KernelEmbossV = { -1, -1, -1, 0,
-								  0, 0, 0, 0,
-								  1, 1, 1, 1,
-								  0, 0, 0, 0 };//C = 0.5
+		//MATRIX4D KernelEmbossV = { -1, -1, -1, 0,
+		//						  0, 0, 0, 0,
+		//						  1, 1, 1, 1,
+		//						  0, 0, 0, 0 };//C = 0.5
 
-		float Strength = fabs(cos(s_fTime));
-		float c = 1 - Strength;
-		MATRIX4D KernelSharp = { 0, c , 0, 0,
-								 c, 1, -c, 0,
-								  0, -c, 0, 0,
-								  0, 0, 0, 0 };//C = 0
+		//float Strength = fabs(cos(s_fTime));
+		//float c = 1 - Strength;
+		//MATRIX4D KernelSharp = { 0, c , 0, 0,
+		//						 c, 1, -c, 0,
+		//						  0, -c, 0, 0,
+		//						  0, 0, 0, 0 };//C = 0
 
-		g_pCSConvolve->m_Params.Kernel = KernelSharp;
-		g_pCSConvolve->m_Params.C = 0;
-		g_pCSConvolve->Configure();
-		g_pCSConvolve->Execute();
+		//g_pCSConvolve->m_Params.Kernel = KernelSharp;
+		//g_pCSConvolve->m_Params.C = 0;
+		//g_pCSConvolve->Configure();
+		//g_pCSConvolve->Execute();
+		#pragma endregion
+
+		//ALU_Copy
+		g_pCSALU->m_pInput_1 = pIntermedio_1;
+		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
+		g_pCSALU->Configure(CCSALU::ALU_COPY);
+		g_pCSALU->Execute();
 
 		//Liberar toda memoria intermedia al terminar de procesar
-		SAFE_RELEASE(pIntermedio);
+		SAFE_RELEASE(pIntermedio_1);
+		SAFE_RELEASE(pIntermedio_2);
 		g_Manager.GetSwapChain()->Present(1, 0);//T-1 sync
 	}
 	ValidateRect(hWnd, NULL);

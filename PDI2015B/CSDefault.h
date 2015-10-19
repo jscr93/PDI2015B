@@ -24,6 +24,6 @@ public:
 	~CCSDefault();
 	bool Initialize();//Compilar los Shaders desde hlsl -> dxgi->native
 	void Configure();//configurar la tuberia de procesamiento
-	void Execute();
+	void Execute();// Despachar la cantidad de hilos necesarios 
 };
 

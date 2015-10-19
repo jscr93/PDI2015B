@@ -64,6 +64,9 @@ void CCSDefault::Configure()
 	m_pOwner->GetContext()->CSSetShaderResources(0, 1, &pSRV);
 	m_pOwner->GetContext()->CSSetUnorderedAccessViews(0, 1, &pUAV, NULL);
 	m_pOwner->GetContext()->CSSetShader(m_pCS, NULL, NULL);
+
+	SAFE_RELEASE(pSRV);
+	SAFE_RELEASE(pUAV);
 }
 
 void CCSDefault::Execute()
