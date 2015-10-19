@@ -52,6 +52,7 @@ bool CCSALU::Configure(ALU_OPERATION op)
 {
 	//instalar el shader y conectar recursos
 	ID3D11ComputeShader * m_pCS = 0;
+
 	switch (op)
 	{
 	case CCSALU::ALU_COPY:			m_pCS = m_pCS_Copy; break;
@@ -69,13 +70,33 @@ bool CCSALU::Configure(ALU_OPERATION op)
 	case CCSALU::ALU_MERGE:			m_pCS = m_pCS_MERGE; break;
 	default: return false;
 	}
-	ID3D11ShaderResourceView *pSRV = 0;
+
+	ID3D11ShaderResourceView *pSRV[2] = { 0,0 };
 	ID3D11UnorderedAccessView *pUAV = 0;
-	m_pOwner->GetDevice()->CreateShaderResourceView(m_pInput_1, NULL, &pSRV);
-	m_pOwner->GetDevice()->CreateShaderResourceView(m_pInput_2, NULL, &pSRV);
+
+	int nInputs = 1;
+	m_pOwner->GetDevice()->CreateShaderResourceView(m_pInput_1, NULL, &pSRV[0]);
+	if (m_pInput_2) {
+		m_pOwner->GetDevice()->CreateShaderResourceView(m_pInput_2, NULL, &pSRV[1]);
+		nInputs++;
+	}
+	m_pOwner->GetContext()->CSSetShaderResources(0, nInputs, pSRV);
+
 	m_pOwner->GetDevice()->CreateUnorderedAccessView(m_pOutput, NULL, &pUAV);
-	m_pOwner->GetContext()->CSSetShaderResources(0, 1, &pSRV);
 	m_pOwner->GetContext()->CSSetUnorderedAccessViews(0, 1, &pUAV, NULL);
+
 	m_pOwner->GetContext()->CSSetShader(m_pCS, NULL, NULL);
 	return true;
+}
+
+void CCSALU::Execute()
+{
+	D3D11_TEXTURE2D_DESC dtd;
+	m_pOutput->GetDesc(&dtd);
+	int gx, gy;
+	gx = (dtd.Width + 7) / 8;
+	gy = (dtd.Height + 7) / 8;
+	m_pOwner->GetContext()->Dispatch(gx, gy, 1);
+	m_pOwner->GetContext()->Flush();//finish queued jobs and free temporal resources
+	m_pOwner->GetContext()->ClearState();//reset GPU and free all references
 }
