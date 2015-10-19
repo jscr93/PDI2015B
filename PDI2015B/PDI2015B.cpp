@@ -302,9 +302,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		#pragma endregion
 
 		//ALU_Copy
-		g_pCSALU->m_pInput_1 = pIntermedio_1;
+		/*g_pCSALU->m_pInput_1 = pIntermedio_1;
 		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
 		g_pCSALU->Configure(CCSALU::ALU_COPY);
+		g_pCSALU->Execute();*/
+
+		//ALU_Neg
+		/*g_pCSALU->m_pInput_1 = pIntermedio_1;
+		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
+		g_pCSALU->Configure(CCSALU::ALU_NEG);
+		g_pCSALU->Execute();*/
+
+		//ALU_AND
+		g_pCSALU->m_pInput_1 = pIntermedio_1;
+		g_pCSALU->m_pInput_2 = g_pSource;
+		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
+		g_pCSALU->Configure(CCSALU::ALU_MERGE);
 		g_pCSALU->Execute();
 
 		//Liberar toda memoria intermedia al terminar de procesar

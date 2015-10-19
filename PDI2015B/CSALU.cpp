@@ -27,18 +27,18 @@ CCSALU::CCSALU(CDXGIManager *pOwner)
 bool CCSALU::Initialize()
 {
 	if (!(m_pCS_Copy =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_Copy.hlsl", "Main"))) return false;
-	/*if (!(m_pCS_Neg =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_Neg.hlsl", "Main"))) return false;
+	if (!(m_pCS_Neg =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_Neg.hlsl", "Main"))) return false;
 	if (!(m_pCS_AND =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_AND.hlsl", "Main"))) return false;
 	if (!(m_pCS_OR =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_OR.hlsl", "Main"))) return false;
 	if (!(m_pCS_XOR =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_XOR.hlsl", "Main"))) return false;
 	if (!(m_pCS_SADD =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_SADD.hlsl", "Main"))) return false;
-	if (!(m_pCS_SSUB =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_SADD.hlsl", "Main"))) return false;
+	if (!(m_pCS_SSUB =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_SSUB.hlsl", "Main"))) return false;
 	if (!(m_pCS_MOD =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_MOD.hlsl", "Main"))) return false;
 	if (!(m_pCS_ALPHAS0 =		m_pOwner->CompileCS(L"..\\Shaders\\ALU_ALPHAS0.hlsl", "Main"))) return false;
 	if (!(m_pCS_ALPHAS1 =		m_pOwner->CompileCS(L"..\\Shaders\\ALU_ALPHAS1.hlsl", "Main"))) return false;
-	if (!(m_pCS_HP_TRESHOLD =	m_pOwner->CompileCS(L"..\\Shaders\\ALU_HP_THRESHOLD.hlsl", "Main"))) return false;
-	if (!(m_pCS_LP_THRESHOLD =	m_pOwner->CompileCS(L"..\\Shaders\\ALU_LP_THRESHOLD.hlsl", "Main"))) return false;
-	if (!(m_pCS_MERGE =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_MERGE.hlsl", "Main"))) return false;*/
+	/*if (!(m_pCS_HP_TRESHOLD =	m_pOwner->CompileCS(L"..\\Shaders\\ALU_HP_THRESHOLD.hlsl", "Main"))) return false;
+	if (!(m_pCS_LP_THRESHOLD =	m_pOwner->CompileCS(L"..\\Shaders\\ALU_LP_THRESHOLD.hlsl", "Main"))) return false;*/
+	if (!(m_pCS_MERGE =			m_pOwner->CompileCS(L"..\\Shaders\\ALU_MERGE.hlsl", "Main"))) return false;
 
 	return true;
 }
@@ -46,23 +46,26 @@ bool CCSALU::Initialize()
 bool CCSALU::Configure(ALU_OPERATION op)
 {
 	//instalar el shader y conectar recursos
-	ID3D11ComputeShader * m_pCS = 0;
+	ID3D11ComputeShader ** m_pCS = 0; //Puntero a los demas punteros compute shaders
+
+
+	bool multipleArgs = true;
 
 	switch (op)
 	{
-	case CCSALU::ALU_COPY:			m_pCS = m_pCS_Copy; break;
-	case CCSALU::ALU_NEG:			m_pCS = m_pCS_Neg; break;
-	case CCSALU::ALU_AND:			m_pCS = m_pCS_AND; break;
-	case CCSALU::ALU_OR:			m_pCS = m_pCS_OR; break;
-	case CCSALU::ALU_XOR:			m_pCS = m_pCS_XOR; break;
-	case CCSALU::ALU_SADD:			m_pCS = m_pCS_SADD; break;
-	case CCSALU::ALU_SSUB:			m_pCS = m_pCS_SSUB; break;
-	case CCSALU::ALU_MOD:			m_pCS = m_pCS_MOD; break;
-	case CCSALU::ALU_ALPHAS0:		m_pCS = m_pCS_ALPHAS0; break;
-	case CCSALU::ALU_ALPHAS1:		m_pCS = m_pCS_ALPHAS1; break;
-	case CCSALU::ALU_HP_THRESHOLD:	m_pCS = m_pCS_HP_TRESHOLD; break;
-	case CCSALU::ALU_LP_THRESHOLD:	m_pCS = m_pCS_LP_THRESHOLD; break;
-	case CCSALU::ALU_MERGE:			m_pCS = m_pCS_MERGE; break;
+	case CCSALU::ALU_COPY:			m_pCS = &m_pCS_Copy; multipleArgs = false; break;
+	case CCSALU::ALU_NEG:			m_pCS = &m_pCS_Neg; multipleArgs = false; break;
+	case CCSALU::ALU_AND:			m_pCS = &m_pCS_AND; break;
+	case CCSALU::ALU_OR:			m_pCS = &m_pCS_OR; break;
+	case CCSALU::ALU_XOR:			m_pCS = &m_pCS_XOR; break;
+	case CCSALU::ALU_SADD:			m_pCS = &m_pCS_SADD; break;
+	case CCSALU::ALU_SSUB:			m_pCS = &m_pCS_SSUB; break;
+	case CCSALU::ALU_MOD:			m_pCS = &m_pCS_MOD; break;
+	case CCSALU::ALU_ALPHAS0:		m_pCS = &m_pCS_ALPHAS0; break;
+	case CCSALU::ALU_ALPHAS1:		m_pCS = &m_pCS_ALPHAS1; break;
+	case CCSALU::ALU_HP_THRESHOLD:	m_pCS = &m_pCS_HP_TRESHOLD; break;
+	case CCSALU::ALU_LP_THRESHOLD:	m_pCS = &m_pCS_LP_THRESHOLD; break;
+	case CCSALU::ALU_MERGE:			m_pCS = &m_pCS_MERGE; break;
 	default: return false;
 	}
 
@@ -71,7 +74,7 @@ bool CCSALU::Configure(ALU_OPERATION op)
 
 	int nInputs = 1;
 	m_pOwner->GetDevice()->CreateShaderResourceView(m_pInput_1, NULL, &pSRV[0]);
-	if (m_pInput_2) {
+	if (multipleArgs) {
 		m_pOwner->GetDevice()->CreateShaderResourceView(m_pInput_2, NULL, &pSRV[1]);
 		nInputs++;
 	}
@@ -80,7 +83,7 @@ bool CCSALU::Configure(ALU_OPERATION op)
 	m_pOwner->GetDevice()->CreateUnorderedAccessView(m_pOutput, NULL, &pUAV);
 	m_pOwner->GetContext()->CSSetUnorderedAccessViews(0, 1, &pUAV, NULL);
 
-	m_pOwner->GetContext()->CSSetShader(m_pCS, NULL, NULL);
+	m_pOwner->GetContext()->CSSetShader(*m_pCS, NULL, NULL);
 
 	SAFE_RELEASE(pSRV[0]);
 	SAFE_RELEASE(pSRV[1]);
