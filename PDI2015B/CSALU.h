@@ -33,7 +33,6 @@ public:
 
 	bool Initialize();
 	bool Configure(ALU_OPERATION);
-
-	
+	void Execute();
 };
 
