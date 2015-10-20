@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "CSConvolve.h"
-
+#include <math.h>
 
 CCSConvolve::CCSConvolve(CDXGIManager* pOwner)
 {
@@ -67,8 +67,54 @@ void CCSConvolve::Execute() {
 	m_pOwner->GetContext()->ClearState();//reset GPU and free all references
 }
 
+MATRIX4D CCSConvolve::getKernelIdentity() {
+	return MATRIX4D { 0,0,0,0,
+	0,1,0,0,
+	0,0,0,0,
+	0,0,0,0 }; // C=0 o cualquier valor
+}
+
+MATRIX4D CCSConvolve::getKernelInvert() {
+	return MATRIX4D { 0,0,0,0,
+	0,-1,0,0,
+	0,0,0,0,
+	0,0,0,0 }; // C=1
+}
+
+MATRIX4D CCSConvolve::getKernelSoft() {
+	return MATRIX4D { 1 / 9.0f,1 / 9.0f,1 / 9.0f,0,
+	1 / 9.0f,1 / 9.0f,1 / 9.0f,0,
+	1 / 9.0f,1 / 9.0f,1 / 9.0f,0,
+	0,0,0,0 };
+}
+
+MATRIX4D CCSConvolve::getKernelLaplace() {
+	return MATRIX4D { 0, -1 / 8.0f,  0, 0,
+	-1 / 8.0f, 1 / 2.0f, -1 / 8.0f, 0,
+	0, -1 / 8.0f, 0, 0,
+	0, 0 , 0, 0 };//C=0.5
+}
+
+MATRIX4D CCSConvolve::getKernelEmbossV() {
+	return MATRIX4D { -1, -1, -1, 0,
+	0, 0, 0, 0,
+	1, 1, 1, 1,
+	0, 0, 0, 0 };//C = 0.5
+}
+
+MATRIX4D CCSConvolve::getKernelSharp(float time) {
+	float Strength = fabs(cos(time));
+	float c = 1 - Strength;
+	return MATRIX4D { 0, c , 0, 0,
+	c, 1, -c, 0,
+	0, -c, 0, 0,
+	0, 0, 0, 0 };//C = 0
+}
+
+
 CCSConvolve::~CCSConvolve()
 {
 	SAFE_RELEASE(m_pCS);
 	SAFE_RELEASE(m_pCB);
 }
+
