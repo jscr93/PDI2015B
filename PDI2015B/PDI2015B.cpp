@@ -275,25 +275,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSConvolve->Execute();
 		#pragma endregion
 
-		//ALU_Copy
-		/*g_pCSALU->m_pInput_1 = pIntermedio_1;
-		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
-		g_pCSALU->Configure(CCSALU::ALU_COPY);
-		g_pCSALU->Execute();*/
-
-		//ALU_Neg
-		/*g_pCSALU->m_pInput_1 = pIntermedio_1;
-		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
-		g_pCSALU->Configure(CCSALU::ALU_NEG);
-		g_pCSALU->Execute();*/
-
-		//ALU
-		/*g_pCSALU->m_pInput_1 = pIntermedio_1;
-		g_pCSALU->m_pInput_2 = g_pSource;
-		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
-		g_pCSALU->Configure(ALU_MERGE);
-		g_pCSALU->Execute();*/
-
 		//ALU_Thresholds
 		g_pCSALU->m_pInput_1 = pDefaultOut;
 		g_pCSALU->m_pInput_2 = pConvolveOut;

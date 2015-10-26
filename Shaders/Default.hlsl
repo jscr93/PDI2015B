@@ -24,7 +24,7 @@ float4 BilinearSampler(float2 uv)
 	A = Input[ij];
 	B = Input[ij + int2(1, 0)];
 	C = Input[ij + int2(0, 1)];
-	D = Input[ij + int2(1, 0)];
+	D = Input[ij + int2(1, 1)];
 
 	float4 R, S;//interpolaciones entre a-b,c-d
 	R = A + pq.x*(B - A);
