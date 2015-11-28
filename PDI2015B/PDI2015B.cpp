@@ -8,6 +8,9 @@
 #include "CSDefault.h"
 #include "CSConvolve.h"
 #include "CSALU.h"
+#include "..\\Video\\AtWareVideoCapture.h"
+#include "VideoProcessor.h"
+#include "Frame.h"
 
 #define MAX_LOADSTRING 100
 
@@ -18,15 +21,17 @@ TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 CDXGIManager g_Manager;
 ID3D11Texture2D* g_pSource;
 CCSDefault *g_pCSDefault;
-CCSConvolve* g_pCSConvolve;			//Shader de convolucion
+CCSConvolve* g_pCSConvolve;						//Shader de convolucion
 CCSALU* g_pCSALU;
-
+IAtWareVideoCapture* g_pIVC;						//Interface Video Capture
+CVideoProcessor g_VP;								//The video processor
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK	VideoHost(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 CDXGIManager::PIXEL alpha(CDXGIManager::PIXEL);
 
@@ -88,12 +93,18 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hInstance = hInstance;
 	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PDI2015B));
 	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	//wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.hbrBackground = 0;
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDC_PDI2015B);
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	ATOM a = RegisterClassEx(&wcex);
+	wcex.lpfnWndProc = VideoHost;
+	wcex.lpszClassName = L"VideoHost";
+	wcex.lpszMenuName = NULL;
+	RegisterClassEx(&wcex);
 
-	return RegisterClassEx(&wcex);
+	return a;
 }
 
 //
@@ -138,15 +149,31 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	g_pCSALU = new CCSALU(&g_Manager);
 	if (!g_pCSALU->Initialize())
 		return FALSE;
+	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp", -1, alpha);
 
-	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp",-1,alpha);
+	printf("hola mundo");
+	wprintf(L"hola mundo");
+	
 
-
+	HWND hWndVH = CreateWindowEx(WS_EX_TOOLWINDOW, L"VideoHost", L"Vista Previa",
+		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+		NULL, NULL, hInst, NULL);
+	g_pIVC = CreateAtWareVideoCapture();
+	g_pIVC->Initialize(hWndVH);
+	g_pIVC->EnumAndChooseCaptureDevice();
+	g_pIVC->BuildStreamGraph();
+	g_pIVC->SetCallBack(&g_VP, 1);
+	AM_MEDIA_TYPE mt;
+	g_pIVC->GetMediaType(&mt);
+	g_VP.m_mt = mt;
+	g_pIVC->Start();
+	g_pIVC->ShowPreviewWindow(true);
 
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
+	ShowWindow(hWndVH, nCmdShow);
 	return TRUE;
 }
 
@@ -245,6 +272,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//tuberia 1: a) Transformacion Afin y B) luego una convolucion
 		//Necesito crear todas las variables temporales que requiera
 		//la tuberia.
+		if(CFrame* pullFrame = g_VP.Pull())
+			g_pSource = g_Manager.LoadTexture(pullFrame);
 
 		ID3D11Texture2D* pConvolveOut;
 		ID3D11Texture2D* pDefaultOut;
@@ -256,6 +285,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pConvolveOut);
 
 		//Procesar
+		
+		/*g_pCSConvolve->m_pInput = g_pSource;
+		g_pCSConvolve->m_pOutput = pDefaultOut;
+		MATRIX4D S = Scale(s_fScale, s_fScale, 1);
+		MATRIX4D R = RotationZ(s_fTheta);
+		MATRIX4D T = Translate(s_mnx, s_mny, 0);
+
+		g_pCSConvolve->m_Params.Kernel = g_pCSConvolve->getKernelLaplace();
+		g_pCSConvolve->m_Params.C = 0.5;
+		g_pCSConvolve->Configure();
+		g_pCSConvolve->Execute();*/
 		g_pCSDefault->m_pInput = g_pSource;
 		g_pCSDefault->m_pOutput = pDefaultOut;
 		MATRIX4D S = Scale(s_fScale, s_fScale, 1);
@@ -325,4 +365,21 @@ CDXGIManager::PIXEL alpha(CDXGIManager::PIXEL p)
 	CDXGIManager::PIXEL pAlpha = p;
 	pAlpha.a = p.b;
 	return pAlpha;
+}
+
+LRESULT WINAPI VideoHost(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg)
+	{
+	case WM_CREATE:
+		return 0;
+	case WM_SIZE:
+	{
+		RECT rc;
+		GetClientRect(hWnd, &rc);
+		g_pIVC->SetPreviewWindowPosition(&rc);
+	}
+	break;
+	}
+	return DefWindowProc(hWnd, msg, wParam, lParam);
 }

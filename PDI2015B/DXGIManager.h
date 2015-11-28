@@ -1,6 +1,7 @@
 #pragma once
 #include <dxgi.h>
 #include <d3d11.h>
+#include "Frame.h"
 #ifndef SAFE_RELEASE
 	#define SAFE_RELEASE(X) if((X)){ (X)->Release();(X)=0; }
 #endif
@@ -33,6 +34,7 @@ public:
 		char* pszFileName, 
 		int nMipMapLevels=-1, 
 		PIXEL (*pPixel)(PIXEL) = NULL);
+	ID3D11Texture2D* LoadTexture(CFrame*);
 	CDXGIManager();
 	~CDXGIManager();
 };

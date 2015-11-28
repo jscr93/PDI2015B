@@ -378,7 +378,7 @@ ID3D11Texture2D* CDXGIManager::LoadTexture(
 				delete[] pRow;
 			}
 			break;
-			break;
+			//break;
 	}
 	//5 .- Transferir de CPU a GPU
 	dtd.Usage = D3D11_USAGE_DEFAULT;
@@ -397,6 +397,64 @@ ID3D11Texture2D* CDXGIManager::LoadTexture(
 	return pTexture;
 }
 
+ID3D11Texture2D* CDXGIManager::LoadTexture(CFrame* frame)
+{
+	D3D11_TEXTURE2D_DESC dtd;
+	ID3D11Texture2D* pStaging = 0;
+	memset(&dtd, 0, sizeof(dtd));
+	dtd.ArraySize = 1;
+	dtd.BindFlags = 0;
+	dtd.CPUAccessFlags = D3D11_CPU_ACCESS_READ
+		| D3D11_CPU_ACCESS_WRITE;
+
+	dtd.Usage = D3D11_USAGE_STAGING;
+	dtd.Height = frame->m_sy;
+	dtd.Width = frame->m_sx;
+	dtd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	dtd.MipLevels = 1;
+	dtd.SampleDesc.Count = 1;
+
+	HRESULT hr =
+		m_pDevice->CreateTexture2D(&dtd, NULL, &pStaging);
+	if (FAILED(hr))
+	{
+		*(int*)0 = 0;
+		return NULL;
+	}
+
+	D3D11_MAPPED_SUBRESOURCE ms;
+	m_pContext->Map(pStaging, 0, D3D11_MAP_READ_WRITE, 0, &ms);
+	for (int j = 0; j < frame->m_sy; j++)
+	{
+		PIXEL *pLine = (PIXEL*)((char*)ms.pData + j*ms.RowPitch);
+		for (int i = 0; i < frame->m_sx; i++)
+		{
+			PIXEL Color;
+			Color.r = frame->GetPixel(i, j).r;
+			Color.g = frame->GetPixel(i, j).g;
+			Color.b = frame->GetPixel(i, j).b;
+			Color.a = 0xff;
+			pLine[i] = Color;
+		}
+	}
+	m_pContext->Unmap(pStaging, 0);
+
+	dtd.Usage = D3D11_USAGE_DEFAULT;
+	dtd.CPUAccessFlags = 0;
+	dtd.BindFlags = D3D11_BIND_UNORDERED_ACCESS
+		| D3D11_BIND_SHADER_RESOURCE;//Se pueden hacer varias vistas de un determinado recurso
+	ID3D11Texture2D* pTexture = 0;
+	hr = m_pDevice->CreateTexture2D(&dtd, NULL, &pTexture);
+	if (FAILED(hr))
+	{
+		SAFE_RELEASE(pStaging);
+		return NULL;
+	}
+	m_pContext->CopyResource(pTexture, pStaging);
+	SAFE_RELEASE(pStaging);
+	delete frame;
+	return pTexture;
+}
 
 void CDXGIManager::Resize(int sx, int sy) 
 {
