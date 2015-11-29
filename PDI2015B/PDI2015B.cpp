@@ -7,6 +7,11 @@
 #include "math.h"
 #include "CSDefault.h"
 #include "CSConvolve.h"
+#include "CSALU.h"
+#include "..\\Video\\AtWareVideoCapture.h"
+#include "VideoProcessor.h"
+#include "Frame.h"
+#include "CSImageComparison.h"
 
 #define MAX_LOADSTRING 100
 
@@ -16,14 +21,23 @@ TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 CDXGIManager g_Manager;
 ID3D11Texture2D* g_pSource;
+ID3D11Texture2D* g_pStaticVideoImage;
 CCSDefault *g_pCSDefault;
-CCSConvolve* g_pCSConvolve;			//Shader de convolucion
+CCSConvolve* g_pCSConvolve;						//Shader de convolucion
+CCSALU* g_pCSALU;
+IAtWareVideoCapture* g_pIVC;						//Interface Video Capture
+CVideoProcessor g_VP;								//The video processor
+CCSImageComparison * g_pIC;
+bool g_ExistsStaticVideoImage;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK	VideoHost(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+CDXGIManager::PIXEL alpha(CDXGIManager::PIXEL);
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -83,12 +97,18 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hInstance = hInstance;
 	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PDI2015B));
 	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	//wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.hbrBackground = 0;
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDC_PDI2015B);
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	ATOM a = RegisterClassEx(&wcex);
+	wcex.lpfnWndProc = VideoHost;
+	wcex.lpszClassName = L"VideoHost";
+	wcex.lpszMenuName = NULL;
+	RegisterClassEx(&wcex);
 
-	return RegisterClassEx(&wcex);
+	return a;
 }
 
 //
@@ -130,14 +150,41 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	if (!g_pCSConvolve->Initialize())
 		return FALSE;
 
-	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp");
+	g_pCSALU = new CCSALU(&g_Manager);
+	if (!g_pCSALU->Initialize())
+		return FALSE;
 
+	g_pIC = new CCSImageComparison(&g_Manager);
+	if (!g_pIC->Initialize())
+		return FALSE;
 
+	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp", -1, alpha);
+	g_pStaticVideoImage = g_pSource;
+	g_ExistsStaticVideoImage = false;
+
+	printf("hola mundo");
+	wprintf(L"hola mundo");
+	
+
+	HWND hWndVH = CreateWindowEx(WS_EX_TOOLWINDOW, L"VideoHost", L"Vista Previa",
+		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+		NULL, NULL, hInst, NULL);
+	g_pIVC = CreateAtWareVideoCapture();
+	g_pIVC->Initialize(hWndVH);
+	g_pIVC->EnumAndChooseCaptureDevice();
+	g_pIVC->BuildStreamGraph();
+	g_pIVC->SetCallBack(&g_VP, 1);
+	AM_MEDIA_TYPE mt;
+	g_pIVC->GetMediaType(&mt);
+	g_VP.m_mt = mt;
+	g_pIVC->Start();
+	g_pIVC->ShowPreviewWindow(true);
 
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
+	ShowWindow(hWndVH, nCmdShow);
 	return TRUE;
 }
 
@@ -159,6 +206,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static float s_fTime = 0;
 	static float s_fScale = 1.0f;
 	static float s_fTheta = 0;
+	static int ALU_op = 0;
 	static int s_mnx, s_mny, s_fInterpolation = 0;
 	switch (message)
 	{
@@ -180,6 +228,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case 'I':
 			s_fInterpolation = ~s_fInterpolation;
+			break;
+		case 'U':
+			if(ALU_op<12)
+				ALU_op++;
+			break;
+		case 'D':
+			if (ALU_op>0)
+				ALU_op--;
+			break;
+		case 'M':
+			g_ExistsStaticVideoImage = false;
 			break;
 		}
 	}
@@ -227,70 +286,95 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//tuberia 1: a) Transformacion Afin y B) luego una convolucion
 		//Necesito crear todas las variables temporales que requiera
 		//la tuberia.
+		if (CFrame* pullFrame = g_VP.Pull())
+		{
+			g_pSource = g_Manager.LoadTexture(pullFrame);
+			/*if (!g_ExistsStaticVideoImage) 
+			{
+				g_pStaticVideoImage = g_pSource;
+				g_ExistsStaticVideoImage = true;
+			}*/
+		}
 
-		ID3D11Texture2D * pIntermedio = 0;
+		ID3D11Texture2D* pConvolveOut;
+		ID3D11Texture2D* pDefaultOut;
 		D3D11_TEXTURE2D_DESC dtd;
-		g_pSource->GetDesc(&dtd);
-		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS; //Buffers intermedios tener este bindflag
-		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pIntermedio);
+
+		g_Manager.GetBackBuffer()->GetDesc(&dtd);
+		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pDefaultOut);
+		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pConvolveOut);
+
+
+
+		//Pruebas
+
+		g_pCSConvolve->m_pInput = g_pSource;
+		g_pCSConvolve->m_pOutput = pConvolveOut;
+
+		g_pCSConvolve->m_Params.Kernel = g_pCSConvolve->getKernelLaplace();
+		g_pCSConvolve->m_Params.C = 0.5;
+		g_pCSConvolve->Configure();
+		g_pCSConvolve->Execute();
+
+
+		g_pIC->m_pInput_1 = pConvolveOut;
+		g_pIC->m_pInput_2 = g_pSource;
+		g_pIC->m_pOutput = g_Manager.GetBackBuffer();
+		g_pIC->Configure();
+		g_pIC->Execute();
+
 
 		//Procesar
-		g_pCSDefault->m_pInput = g_pSource;
-		g_pCSDefault->m_pOutput = pIntermedio;
+		
+		/*g_pCSConvolve->m_pInput = g_pSource;
+		g_pCSConvolve->m_pOutput = pDefaultOut;
+		MATRIX4D S = Scale(s_fScale, s_fScale, 1);
+		MATRIX4D R = RotationZ(s_fTheta);
+		MATRIX4D T = Translate(s_mnx, s_mny, 0);
+
+		g_pCSConvolve->m_Params.Kernel = g_pCSConvolve->getKernelLaplace();
+		g_pCSConvolve->m_Params.C = 0.5;
+		g_pCSConvolve->Configure();
+		g_pCSConvolve->Execute();*/
+
+		/*g_pCSDefault->m_pInput = g_pSource;
+		g_pCSDefault->m_pOutput = pDefaultOut;
 		MATRIX4D S = Scale(s_fScale, s_fScale, 1);
 		MATRIX4D R = RotationZ(s_fTheta);
 		MATRIX4D T = Translate(s_mnx, s_mny, 0);
 
 		g_pCSDefault->m_Params.M = Inverse(S*R*T);
 		g_pCSDefault->Configure();
-		g_pCSDefault->Execute(); 
+		g_pCSDefault->Execute(); */
 
-		g_pCSConvolve->m_pInput = pIntermedio;
-		g_pCSConvolve->m_pOutput = g_Manager.GetBackBuffer();
-		MATRIX4D Kernel = { 1,1,1,0,
-							0,0,0,0,
-							-1,-1,-1,0,
-							0,0,0,0 };
+		/*g_pIC->m_pInput_1 = g_pSource;
+		g_pIC->m_pInput_2 = g_pStaticVideoImage;
+		g_pIC->m_pOutput = pDefaultOut;
+		g_pIC->Configure();
+		g_pIC->Execute();*/
 
-		MATRIX4D KernelIdentity = { 0,0,0,0,
-									0,1,0,0,
-									0,0,0,0,
-									0,0,0,0 }; // C=0 o cualquier valor
-
-		MATRIX4D KernelInvert = { 0,0,0,0,
-									0,-1,0,0,
-									0,0,0,0,
-									0,0,0,0 }; // C=1
-
-		MATRIX4D KernelSoft = { 1/9.0f,1/9.0f,1/9.0f,0,
-								1/9.0f,1/9.0f,1/9.0f,0,
-								1/9.0f,1/9.0f,1/9.0f,0,
-								0,0,0,0 };
-
-		MATRIX4D KernelLaplace = { 0, -1/8.0f,  0, 0,
-								-1/8.0f, 1/2.0f, -1/8.0f, 0,
-								0, -1/8.0f, 0, 0,
-								0, 0 , 0, 0};//C=0.5
-
-		MATRIX4D KernelEmbossV = { -1, -1, -1, 0,
-								  0, 0, 0, 0,
-								  1, 1, 1, 1,
-								  0, 0, 0, 0 };//C = 0.5
-
-		float Strength = fabs(cos(s_fTime));
-		float c = 1 - Strength;
-		MATRIX4D KernelSharp = { 0, c , 0, 0,
-								 c, 1, -c, 0,
-								  0, -c, 0, 0,
-								  0, 0, 0, 0 };//C = 0
-
-		g_pCSConvolve->m_Params.Kernel = KernelSharp;
+		/*#pragma region Convolve
+		g_pCSConvolve->m_pInput = g_pSource;
+		g_pCSConvolve->m_pOutput = pConvolveOut;
+		g_pCSConvolve->m_Params.Kernel = g_pCSConvolve->getKernelSharp(s_fTime);
 		g_pCSConvolve->m_Params.C = 0;
 		g_pCSConvolve->Configure();
 		g_pCSConvolve->Execute();
+		#pragma endregion
+
+		//ALU_Thresholds
+		g_pCSALU->m_pInput_1 = pDefaultOut;
+		g_pCSALU->m_pInput_2 = pConvolveOut;
+		//g_pCSALU->m_Params.m_Threshold = { 0,0,0,0 };
+		g_pCSALU->m_Params.Threshold = 0.4;
+		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
+		g_pCSALU->Configure((ALU_OPERATION)ALU_op);
+		g_pCSALU->Execute();*/
 
 		//Liberar toda memoria intermedia al terminar de procesar
-		SAFE_RELEASE(pIntermedio);
+		SAFE_RELEASE(pConvolveOut);
+		SAFE_RELEASE(pDefaultOut);
 		g_Manager.GetSwapChain()->Present(1, 0);//T-1 sync
 	}
 	ValidateRect(hWnd, NULL);
@@ -324,3 +408,26 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	return (INT_PTR)FALSE;
 }
 
+CDXGIManager::PIXEL alpha(CDXGIManager::PIXEL p)
+{
+	CDXGIManager::PIXEL pAlpha = p;
+	pAlpha.a = p.b;
+	return pAlpha;
+}
+
+LRESULT WINAPI VideoHost(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg)
+	{
+	case WM_CREATE:
+		return 0;
+	case WM_SIZE:
+	{
+		RECT rc;
+		GetClientRect(hWnd, &rc);
+		g_pIVC->SetPreviewWindowPosition(&rc);
+	}
+	break;
+	}
+	return DefWindowProc(hWnd, msg, wParam, lParam);
+}
