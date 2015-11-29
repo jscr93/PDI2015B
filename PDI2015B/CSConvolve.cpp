@@ -89,11 +89,12 @@ MATRIX4D CCSConvolve::getKernelSoft() {
 }
 
 MATRIX4D CCSConvolve::getKernelLaplace() {
-	return MATRIX4D { 0, -1 / 8.0f,  0, 0,
-	-1 / 8.0f, 1 / 2.0f, -1 / 8.0f, 0,
-	0, -1 / 8.0f, 0, 0,
-	0, 0 , 0, 0 };//C=0.5
+	return MATRIX4D {	0, -1 / 8.0f,  0, 0,
+						-1 / 8.0f, 1 / 2.0f, -1 / 8.0f, 0,
+						0, -1 / 8.0f, 0, 0,
+						0, 0 , 0, 0 };//C=0.5
 }
+
 
 MATRIX4D CCSConvolve::getKernelEmbossV() {
 	return MATRIX4D { -1, -1, -1, 0,

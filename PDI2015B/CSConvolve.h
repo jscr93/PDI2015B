@@ -22,6 +22,7 @@ public:
 	static MATRIX4D getKernelInvert();
 	static MATRIX4D getKernelSoft();
 	static MATRIX4D getKernelLaplace();
+	static MATRIX4D getKernelLaplace_M1();
 	static MATRIX4D getKernelEmbossV();
 	static MATRIX4D getKernelSharp(float);
 

@@ -11,6 +11,7 @@
 #include "..\\Video\\AtWareVideoCapture.h"
 #include "VideoProcessor.h"
 #include "Frame.h"
+#include "CSImageComparison.h"
 
 #define MAX_LOADSTRING 100
 
@@ -20,11 +21,14 @@ TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 CDXGIManager g_Manager;
 ID3D11Texture2D* g_pSource;
+ID3D11Texture2D* g_pStaticVideoImage;
 CCSDefault *g_pCSDefault;
 CCSConvolve* g_pCSConvolve;						//Shader de convolucion
 CCSALU* g_pCSALU;
 IAtWareVideoCapture* g_pIVC;						//Interface Video Capture
 CVideoProcessor g_VP;								//The video processor
+CCSImageComparison * g_pIC;
+bool g_ExistsStaticVideoImage;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -149,7 +153,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	g_pCSALU = new CCSALU(&g_Manager);
 	if (!g_pCSALU->Initialize())
 		return FALSE;
+
+	g_pIC = new CCSImageComparison(&g_Manager);
+	if (!g_pIC->Initialize())
+		return FALSE;
+
 	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp", -1, alpha);
+	g_pStaticVideoImage = g_pSource;
+	g_ExistsStaticVideoImage = false;
 
 	printf("hola mundo");
 	wprintf(L"hola mundo");
@@ -226,6 +237,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (ALU_op>0)
 				ALU_op--;
 			break;
+		case 'M':
+			g_ExistsStaticVideoImage = false;
+			break;
 		}
 	}
 	break;
@@ -272,8 +286,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//tuberia 1: a) Transformacion Afin y B) luego una convolucion
 		//Necesito crear todas las variables temporales que requiera
 		//la tuberia.
-		if(CFrame* pullFrame = g_VP.Pull())
+		if (CFrame* pullFrame = g_VP.Pull())
+		{
 			g_pSource = g_Manager.LoadTexture(pullFrame);
+			/*if (!g_ExistsStaticVideoImage) 
+			{
+				g_pStaticVideoImage = g_pSource;
+				g_ExistsStaticVideoImage = true;
+			}*/
+		}
 
 		ID3D11Texture2D* pConvolveOut;
 		ID3D11Texture2D* pDefaultOut;
@@ -283,6 +304,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pDefaultOut);
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pConvolveOut);
+
+
+
+		//Pruebas
+
+		g_pCSConvolve->m_pInput = g_pSource;
+		g_pCSConvolve->m_pOutput = pConvolveOut;
+
+		g_pCSConvolve->m_Params.Kernel = g_pCSConvolve->getKernelLaplace();
+		g_pCSConvolve->m_Params.C = 0.5;
+		g_pCSConvolve->Configure();
+		g_pCSConvolve->Execute();
+
+
+		g_pIC->m_pInput_1 = pConvolveOut;
+		g_pIC->m_pInput_2 = g_pSource;
+		g_pIC->m_pOutput = g_Manager.GetBackBuffer();
+		g_pIC->Configure();
+		g_pIC->Execute();
+
 
 		//Procesar
 		
@@ -296,7 +337,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSConvolve->m_Params.C = 0.5;
 		g_pCSConvolve->Configure();
 		g_pCSConvolve->Execute();*/
-		g_pCSDefault->m_pInput = g_pSource;
+
+		/*g_pCSDefault->m_pInput = g_pSource;
 		g_pCSDefault->m_pOutput = pDefaultOut;
 		MATRIX4D S = Scale(s_fScale, s_fScale, 1);
 		MATRIX4D R = RotationZ(s_fTheta);
@@ -304,9 +346,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		g_pCSDefault->m_Params.M = Inverse(S*R*T);
 		g_pCSDefault->Configure();
-		g_pCSDefault->Execute(); 
+		g_pCSDefault->Execute(); */
 
-		#pragma region Convolve
+		/*g_pIC->m_pInput_1 = g_pSource;
+		g_pIC->m_pInput_2 = g_pStaticVideoImage;
+		g_pIC->m_pOutput = pDefaultOut;
+		g_pIC->Configure();
+		g_pIC->Execute();*/
+
+		/*#pragma region Convolve
 		g_pCSConvolve->m_pInput = g_pSource;
 		g_pCSConvolve->m_pOutput = pConvolveOut;
 		g_pCSConvolve->m_Params.Kernel = g_pCSConvolve->getKernelSharp(s_fTime);
@@ -322,7 +370,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSALU->m_Params.Threshold = 0.4;
 		g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
 		g_pCSALU->Configure((ALU_OPERATION)ALU_op);
-		g_pCSALU->Execute();
+		g_pCSALU->Execute();*/
 
 		//Liberar toda memoria intermedia al terminar de procesar
 		SAFE_RELEASE(pConvolveOut);

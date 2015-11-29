@@ -155,6 +155,7 @@
     <ClInclude Include="CSDefault.h" />
     <ClInclude Include="DXGIManager.h" />
     <ClInclude Include="Frame.h" />
+    <ClInclude Include="CSImageComparison.h" />
     <ClInclude Include="Matrix4D.h" />
     <ClInclude Include="PDI2015B.h" />
     <ClInclude Include="Resource.h" />
@@ -168,6 +169,7 @@
     <ClCompile Include="CSDefault.cpp" />
     <ClCompile Include="DXGIManager.cpp" />
     <ClCompile Include="Frame.cpp" />
+    <ClCompile Include="CSImageComparison.cpp" />
     <ClCompile Include="Matrix4D.cpp" />
     <ClCompile Include="PDI2015B.cpp" />
     <ClCompile Include="stdafx.cpp">
