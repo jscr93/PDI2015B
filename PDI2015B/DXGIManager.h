@@ -35,6 +35,7 @@ public:
 		int nMipMapLevels=-1, 
 		PIXEL (*pPixel)(PIXEL) = NULL);
 	ID3D11Texture2D* LoadTexture(CFrame*);
+	ID3D11Texture2D* LoadWhiteTextureOfSize(CFrame*);
 	CDXGIManager();
 	~CDXGIManager();
 };

@@ -11,7 +11,8 @@
 #include "..\\Video\\AtWareVideoCapture.h"
 #include "VideoProcessor.h"
 #include "Frame.h"
-#include "CSImageComparison.h"
+#include "CSMetaCanvas.h"
+#include "CSFusion.h"
 
 #define MAX_LOADSTRING 100
 
@@ -22,13 +23,16 @@ TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 CDXGIManager g_Manager;
 ID3D11Texture2D* g_pSource;
 ID3D11Texture2D* g_pStaticVideoImage;
+ID3D11Texture2D* g_pMetaCanvas;
 CCSDefault *g_pCSDefault;
 CCSConvolve* g_pCSConvolve;						//Shader de convolucion
 CCSALU* g_pCSALU;
 IAtWareVideoCapture* g_pIVC;						//Interface Video Capture
 CVideoProcessor g_VP;								//The video processor
-CCSImageComparison * g_pIC;
+CCSMetaCanvas* g_pCSMC;
+CCSFusion* g_pCSFusion;
 bool g_ExistsStaticVideoImage;
+bool g_ExistsMetaCanvas;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -154,13 +158,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	if (!g_pCSALU->Initialize())
 		return FALSE;
 
-	g_pIC = new CCSImageComparison(&g_Manager);
-	if (!g_pIC->Initialize())
+	g_pCSMC = new CCSMetaCanvas(&g_Manager);
+	if (!g_pCSMC->Initialize())
+		return FALSE;
+
+	g_pCSFusion = new CCSFusion(&g_Manager);
+	if (!g_pCSFusion->Initialize())
 		return FALSE;
 
 	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp", -1, alpha);
 	g_pStaticVideoImage = g_pSource;
+
 	g_ExistsStaticVideoImage = false;
+	g_ExistsMetaCanvas = false;
 
 	printf("hola mundo");
 	wprintf(L"hola mundo");
@@ -208,6 +218,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static float s_fTheta = 0;
 	static int ALU_op = 0;
 	static int s_mnx, s_mny, s_fInterpolation = 0;
+	static int brush_size = 10;
+	static int style = 0;
+	static bool canvasresised = false;
 	switch (message)
 	{
 	case WM_KEYDOWN:
@@ -240,7 +253,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case 'M':
 			g_ExistsStaticVideoImage = false;
 			break;
+		case 'P':
+			if(brush_size<100)
+				brush_size++;
+			break;
+		case 'L':
+			if(brush_size>1)
+				brush_size--;
+			break;
+		case '1':
+			style = 1;
+			break;
+		case '0':
+			style = 0;
+			break;
+		case 'N':
+			g_ExistsMetaCanvas = false;
+			break;
 		}
+
 	}
 	break;
 	case WM_MOUSEMOVE:
@@ -286,43 +317,89 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//tuberia 1: a) Transformacion Afin y B) luego una convolucion
 		//Necesito crear todas las variables temporales que requiera
 		//la tuberia.
+
+
 		if (CFrame* pullFrame = g_VP.Pull())
 		{
+
+
+			if (!g_ExistsMetaCanvas)
+			{
+				g_pMetaCanvas = g_Manager.LoadWhiteTextureOfSize(pullFrame);
+				g_ExistsMetaCanvas = true;
+			}
+
 			g_pSource = g_Manager.LoadTexture(pullFrame);
-			/*if (!g_ExistsStaticVideoImage) 
+			if (!g_ExistsStaticVideoImage) 
 			{
 				g_pStaticVideoImage = g_pSource;
 				g_ExistsStaticVideoImage = true;
+			}
+
+			/*if (!g_ExistsMetaCanvas)
+			{
+				g_pMetaCanvas = g_Manager.LoadWhiteTextureOfSize(pullFrame);
+				g_ExistsMetaCanvas = true;
 			}*/
+
 		}
 
-		ID3D11Texture2D* pConvolveOut;
-		ID3D11Texture2D* pDefaultOut;
+
+		if (!g_pMetaCanvas)
+			return 0;
+
+		ID3D11Texture2D* pFusionOut;
+		ID3D11Texture2D* pMetaCanvasOut;
+		ID3D11Texture2D* pImageModifiedOut;
+		//ID3D11Texture2D* pDefaultOut;
 		D3D11_TEXTURE2D_DESC dtd;
 
 		g_Manager.GetBackBuffer()->GetDesc(&dtd);
 		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pDefaultOut);
-		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pConvolveOut);
+		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pMetaCanvasOut);
+		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pFusionOut);
+
+		ID3D11Texture2D* pImageModified = NULL;
+
+		if (style == 0)
+		{
+			pImageModified = g_pStaticVideoImage;
+		}
+		else if (style == 1)
+		{
+			g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pImageModifiedOut);
+			g_pCSALU->m_pInput_1 = g_pSource;
+			g_pCSALU->m_pOutput = pImageModifiedOut;
+			g_pCSALU->Configure((ALU_OPERATION)ALU_NEG);
+			g_pCSALU->Execute();
+			pImageModified = pImageModifiedOut;
+		}
+
+		g_pCSFusion->m_pInput_1 = g_pSource;
+		g_pCSFusion->m_pInput_2 = pImageModified;
+		g_pCSFusion->m_pInput_3 = g_pMetaCanvas;
+		g_pCSFusion->m_pOutput = pFusionOut;
+		g_pCSFusion->Configure();
+		g_pCSFusion->Execute();
+
+		g_pCSMC->m_pInput_1 = pFusionOut;
+		g_pCSMC->m_pInput_2 = g_pMetaCanvas;
+		g_pCSMC->m_pOutput_1 = g_Manager.GetBackBuffer();
+		g_pCSMC->m_pOutput_2 = pMetaCanvasOut;
+		g_pCSMC->m_Params.cursor_posX = s_mnx;
+		g_pCSMC->m_Params.cursor_posY = s_mny;
+		g_pCSMC->m_Params.brush_size = brush_size;
+		g_pCSMC->Configure();
+		g_pCSMC->Execute();
 
 
+		g_pCSALU->m_pInput_1 = pMetaCanvasOut;
+		g_pCSALU->m_pOutput = g_pMetaCanvas;
+		g_pCSALU->Configure((ALU_OPERATION)ALU_COPY);
+		g_pCSALU->Execute();
 
-		//Pruebas
+		
 
-		g_pCSConvolve->m_pInput = g_pSource;
-		g_pCSConvolve->m_pOutput = pConvolveOut;
-
-		g_pCSConvolve->m_Params.Kernel = g_pCSConvolve->getKernelLaplace();
-		g_pCSConvolve->m_Params.C = 0.5;
-		g_pCSConvolve->Configure();
-		g_pCSConvolve->Execute();
-
-
-		g_pIC->m_pInput_1 = pConvolveOut;
-		g_pIC->m_pInput_2 = g_pSource;
-		g_pIC->m_pOutput = g_Manager.GetBackBuffer();
-		g_pIC->Configure();
-		g_pIC->Execute();
 
 
 		//Procesar
@@ -372,9 +449,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSALU->Configure((ALU_OPERATION)ALU_op);
 		g_pCSALU->Execute();*/
 
+
+
+
 		//Liberar toda memoria intermedia al terminar de procesar
-		SAFE_RELEASE(pConvolveOut);
-		SAFE_RELEASE(pDefaultOut);
+		SAFE_RELEASE(pFusionOut);
+		SAFE_RELEASE(pMetaCanvasOut);
 		g_Manager.GetSwapChain()->Present(1, 0);//T-1 sync
 	}
 	ValidateRect(hWnd, NULL);
