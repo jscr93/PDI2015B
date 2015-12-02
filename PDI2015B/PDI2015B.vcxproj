@@ -153,6 +153,8 @@
     <ClInclude Include="CSALU.h" />
     <ClInclude Include="CSConvolve.h" />
     <ClInclude Include="CSDefault.h" />
+    <ClInclude Include="CSFusion.h" />
+    <ClInclude Include="CSMetaCanvas.h" />
     <ClInclude Include="DXGIManager.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="CSImageComparison.h" />
@@ -167,6 +169,8 @@
     <ClCompile Include="CSALU.cpp" />
     <ClCompile Include="CSConvolve.cpp" />
     <ClCompile Include="CSDefault.cpp" />
+    <ClCompile Include="CSFusion.cpp" />
+    <ClCompile Include="CSMetaCanvas.cpp" />
     <ClCompile Include="DXGIManager.cpp" />
     <ClCompile Include="Frame.cpp" />
     <ClCompile Include="CSImageComparison.cpp" />
