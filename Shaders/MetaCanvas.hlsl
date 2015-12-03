@@ -8,7 +8,7 @@ cbuffer PARAMS
 	int cursor_prev_posY;
 	int brush_size;
 	float m;
-	bool infinite_m;
+	int click;
 };
 
 Texture2D<float4>	FusionOut:register(t0);//FusionOut
@@ -90,7 +90,18 @@ void Main(int3 id:SV_DispatchThreadID)
 	if (((dx < brush_size) || (dy < brush_size)) && id.x > (min_x - brush_size) && id.x < (max_x + brush_size) && id.y >(min_y - brush_size) && id.y < (max_y + brush_size))
 	{
 		BackBuffer[id.xy] = FusionOut[id.xy] * (brush_alpha)+(brush_color * (1 - brush_alpha));
-		MetaCanvasOut[id.xy] = float4(0, 0, 0, 0);
+		if (click == 1)
+		{
+			MetaCanvasOut[id.xy] = float4(0, 0, 0, 0);
+		}
+		if (click == 2)
+		{
+			MetaCanvasOut[id.xy] = float4(1, 1, 1, 0);
+		}
+		if (click == 0)
+		{
+			MetaCanvasOut[id.xy] = MetaCanvas[id.xy];
+		}
 	}
 		//Output[id.xy] = brush_color;
 	else

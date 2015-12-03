@@ -516,6 +516,57 @@ ID3D11Texture2D* CDXGIManager::LoadWhiteTextureOfSize(CFrame* frame)
 	return pTexture;
 }
 
+CFrame* CDXGIManager::LoadTextureBack(ID3D11Texture2D* sourceTexture)
+{
+	D3D11_TEXTURE2D_DESC dtd;
+	ID3D11Texture2D* pStaging = 0;
+
+	memset(&dtd, 0, sizeof(dtd));
+	sourceTexture->GetDesc(&dtd);
+
+
+	//UINT height = dtd.Height;
+	//UINT width = dtd.Width;
+	CFrame* frame;
+	frame = new CFrame(dtd.Width, dtd.Height);
+	dtd.ArraySize = 1;
+	dtd.BindFlags = 0;
+	dtd.CPUAccessFlags = D3D11_CPU_ACCESS_READ
+		| D3D11_CPU_ACCESS_WRITE;
+
+	dtd.Usage = D3D11_USAGE_STAGING;
+	dtd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	dtd.MipLevels = 1;
+	dtd.SampleDesc.Count = 1;
+
+	HRESULT hr =
+		m_pDevice->CreateTexture2D(&dtd, NULL, &pStaging);
+	if (FAILED(hr))
+	{
+		*(int*)0 = 0;
+		return NULL;
+	}
+
+	m_pContext->CopyResource(pStaging, sourceTexture);
+	D3D11_MAPPED_SUBRESOURCE ms;
+	m_pContext->Map(pStaging, 0, D3D11_MAP_READ_WRITE, 0, &ms);
+
+	for (int j = 0; j < frame->m_sy; j++)
+	{
+		PIXEL *pLine = (PIXEL*)((char*)ms.pData + j*ms.RowPitch);
+		for (int i = 0; i < frame->m_sx; i++)
+		{
+			PIXEL Color = pLine[i];
+			frame->GetPixel(i, j).r = Color.r;
+			frame->GetPixel(i, j).g = Color.g;
+			frame->GetPixel(i, j).b = Color.b;
+			frame->GetPixel(i, j).a = Color.a;
+		}
+	}
+	m_pContext->Unmap(pStaging, 0);
+	SAFE_RELEASE(pStaging);
+	return frame;
+}
 
 
 void CDXGIManager::Resize(int sx, int sy) 

@@ -36,6 +36,7 @@ public:
 		PIXEL (*pPixel)(PIXEL) = NULL);
 	ID3D11Texture2D* LoadTexture(CFrame*);
 	ID3D11Texture2D* LoadWhiteTextureOfSize(CFrame*);
+	CFrame* LoadTextureBack(ID3D11Texture2D*);
 	CDXGIManager();
 	~CDXGIManager();
 };

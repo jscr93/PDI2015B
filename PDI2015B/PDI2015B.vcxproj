@@ -158,6 +158,7 @@
     <ClInclude Include="DXGIManager.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="CSImageComparison.h" />
+    <ClInclude Include="gif.h" />
     <ClInclude Include="Matrix4D.h" />
     <ClInclude Include="PDI2015B.h" />
     <ClInclude Include="Resource.h" />
