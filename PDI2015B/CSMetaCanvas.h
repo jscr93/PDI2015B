@@ -14,7 +14,10 @@ public:
 	struct PARAMS
 	{
 		int cursor_posX, cursor_posY;
+		int cursor_prev_posX, cursor_prev_posY;
 		int brush_size;
+		float m;
+		bool infinite_m;
 	}m_Params;
 	ID3D11Texture2D * m_pInput_1;
 	ID3D11Texture2D * m_pInput_2;

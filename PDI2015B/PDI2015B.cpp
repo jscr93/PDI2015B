@@ -218,6 +218,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static float s_fTheta = 0;
 	static int ALU_op = 0;
 	static int s_mnx, s_mny, s_fInterpolation = 0;
+	static int s_prev_mnx, s_prev_mny = 0;
 	static int brush_size = 10;
 	static int style = 0;
 	static bool canvasresised = false;
@@ -314,57 +315,59 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_PAINT:
 	{
-		//tuberia 1: a) Transformacion Afin y B) luego una convolucion
-		//Necesito crear todas las variables temporales que requiera
-		//la tuberia.
-
-
 		if (CFrame* pullFrame = g_VP.Pull())
 		{
 
-
 			if (!g_ExistsMetaCanvas)
 			{
+				//This function creates a white texture2d of the same size as the pulled video frame.
+				//It does not delete the frame
 				g_pMetaCanvas = g_Manager.LoadWhiteTextureOfSize(pullFrame);
 				g_ExistsMetaCanvas = true;
 			}
 
+			//Creates a texture2d from the pulled video frame and then deletes the frame
 			g_pSource = g_Manager.LoadTexture(pullFrame);
+
+			//Creates an static image for the style 0
 			if (!g_ExistsStaticVideoImage) 
 			{
 				g_pStaticVideoImage = g_pSource;
 				g_ExistsStaticVideoImage = true;
 			}
-
-			/*if (!g_ExistsMetaCanvas)
-			{
-				g_pMetaCanvas = g_Manager.LoadWhiteTextureOfSize(pullFrame);
-				g_ExistsMetaCanvas = true;
-			}*/
-
 		}
 
+		if (!s_prev_mnx)
+		{
+			s_prev_mnx = s_mnx;
+			s_prev_mny = s_mny;
+		}
 
+		//If it doesn't exist a metacanvas yet, do not do anything
 		if (!g_pMetaCanvas)
 			return 0;
 
+		//Pipeline textures
 		ID3D11Texture2D* pFusionOut;
 		ID3D11Texture2D* pMetaCanvasOut;
 		ID3D11Texture2D* pImageModifiedOut;
-		//ID3D11Texture2D* pDefaultOut;
+		ID3D11Texture2D* pImageModified = NULL;
+
 		D3D11_TEXTURE2D_DESC dtd;
 
+		//Initializes textures
 		g_Manager.GetBackBuffer()->GetDesc(&dtd);
 		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pMetaCanvasOut);
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pFusionOut);
 
-		ID3D11Texture2D* pImageModified = NULL;
-
+		 
+		//Style 0: Static Video Image
 		if (style == 0)
 		{
 			pImageModified = g_pStaticVideoImage;
 		}
+		//Style 2: Negatice Image
 		else if (style == 1)
 		{
 			g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pImageModifiedOut);
@@ -388,7 +391,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSMC->m_pOutput_2 = pMetaCanvasOut;
 		g_pCSMC->m_Params.cursor_posX = s_mnx;
 		g_pCSMC->m_Params.cursor_posY = s_mny;
+		g_pCSMC->m_Params.cursor_prev_posX = s_prev_mnx;
+		g_pCSMC->m_Params.cursor_prev_posY = s_prev_mny;
 		g_pCSMC->m_Params.brush_size = brush_size;
+		int dx = s_prev_mnx - s_mnx;
+		int dy = s_prev_mny - s_mny;
+		if (dx != 0)
+		{
+			g_pCSMC->m_Params.infinite_m = false;
+			g_pCSMC->m_Params.m = (float)dy / (float)dx;
+		}
+		else
+		{
+			g_pCSMC->m_Params.infinite_m = true;
+			g_pCSMC->m_Params.m = 0;
+		}
 		g_pCSMC->Configure();
 		g_pCSMC->Execute();
 
@@ -449,8 +466,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSALU->Configure((ALU_OPERATION)ALU_op);
 		g_pCSALU->Execute();*/
 
-
-
+		s_prev_mnx = s_mnx;
+		s_prev_mny = s_mny;
 
 		//Liberar toda memoria intermedia al terminar de procesar
 		SAFE_RELEASE(pFusionOut);
