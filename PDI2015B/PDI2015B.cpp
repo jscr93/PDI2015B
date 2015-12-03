@@ -217,11 +217,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static float s_fScale = 1.0f;
 	static float s_fTheta = 0;
 	static int ALU_op = 0;
-	static int s_mnx, s_mny, s_fInterpolation = 0;
-	static int s_prev_mnx, s_prev_mny = 0;
+	static int s_fInterpolation = 0;
+	static int s_mnx, s_mny = -1;
+	static int s_prev_mnx, s_prev_mny = -1;
 	static int brush_size = 10;
 	static int style = 0;
 	static bool canvasresised = false;
+	
+	static int click = 0;
 	switch (message)
 	{
 	case WM_KEYDOWN:
@@ -272,9 +275,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			g_ExistsMetaCanvas = false;
 			break;
 		}
-
 	}
 	break;
+	case WM_LBUTTONDOWN:
+		click = 1;
+		break;
+	case WM_RBUTTONDOWN:
+		click = 2;
+		break;
+	case WM_RBUTTONUP:
+	case WM_LBUTTONUP:
+		click = 0;
+		break;	
 	case WM_MOUSEMOVE:
 	{
 		s_mnx = LOWORD(lParam);
@@ -337,7 +349,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 		}
 
-		if (!s_prev_mnx)
+		if (s_prev_mnx == -1)
 		{
 			s_prev_mnx = s_mnx;
 			s_prev_mny = s_mny;
@@ -398,14 +410,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		int dy = s_prev_mny - s_mny;
 		if (dx != 0)
 		{
-			g_pCSMC->m_Params.infinite_m = false;
 			g_pCSMC->m_Params.m = (float)dy / (float)dx;
 		}
 		else
 		{
-			g_pCSMC->m_Params.infinite_m = true;
 			g_pCSMC->m_Params.m = 0;
 		}
+		g_pCSMC->m_Params.click = click;
 		g_pCSMC->Configure();
 		g_pCSMC->Execute();
 
