@@ -2,6 +2,7 @@
 #include <dxgi.h>
 #include <d3d11.h>
 #include "Frame.h"
+#include "UFrame.h"
 #ifndef SAFE_RELEASE
 	#define SAFE_RELEASE(X) if((X)){ (X)->Release();(X)=0; }
 #endif
@@ -36,7 +37,7 @@ public:
 		PIXEL (*pPixel)(PIXEL) = NULL);
 	ID3D11Texture2D* LoadTexture(CFrame*);
 	ID3D11Texture2D* LoadWhiteTextureOfSize(CFrame*);
-	CFrame* LoadTextureBack(ID3D11Texture2D*);
+	CUFrame* LoadTextureBack(ID3D11Texture2D*);
 	CDXGIManager();
 	~CDXGIManager();
 };

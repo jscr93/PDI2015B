@@ -516,7 +516,7 @@ ID3D11Texture2D* CDXGIManager::LoadWhiteTextureOfSize(CFrame* frame)
 	return pTexture;
 }
 
-CFrame* CDXGIManager::LoadTextureBack(ID3D11Texture2D* sourceTexture)
+CUFrame* CDXGIManager::LoadTextureBack(ID3D11Texture2D* sourceTexture)
 {
 	D3D11_TEXTURE2D_DESC dtd;
 	ID3D11Texture2D* pStaging = 0;
@@ -527,8 +527,8 @@ CFrame* CDXGIManager::LoadTextureBack(ID3D11Texture2D* sourceTexture)
 
 	//UINT height = dtd.Height;
 	//UINT width = dtd.Width;
-	CFrame* frame;
-	frame = new CFrame(dtd.Width, dtd.Height);
+	CUFrame* frame;
+	frame = new CUFrame(dtd.Width, dtd.Height);
 	dtd.ArraySize = 1;
 	dtd.BindFlags = 0;
 	dtd.CPUAccessFlags = D3D11_CPU_ACCESS_READ

@@ -66,6 +66,12 @@
     <ClInclude Include="gif.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GIFManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UFrame.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -102,6 +108,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CSFusion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GIFManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UFrame.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -13,7 +13,8 @@
 #include "Frame.h"
 #include "CSMetaCanvas.h"
 #include "CSFusion.h"
-#include "gif.h"
+#include "GIFManager.h"
+//#include "gif.h"
 
 #define MAX_LOADSTRING 100
 
@@ -32,9 +33,10 @@ IAtWareVideoCapture* g_pIVC;						//Interface Video Capture
 CVideoProcessor g_VP;								//The video processor
 CCSMetaCanvas* g_pCSMC;
 CCSFusion* g_pCSFusion;
+CGIFManager* g_pCGIF;
 bool g_ExistsStaticVideoImage;
 bool g_ExistsMetaCanvas;
-GifWriter* g_gifWriter;
+//GifWriter* g_gifWriter;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -168,7 +170,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	if (!g_pCSFusion->Initialize())
 		return FALSE;
 
-	g_gifWriter = new GifWriter;
+	g_pCGIF = new CGIFManager();
+
+	//g_gifWriter = new GifWriter;
 
 	g_pSource = g_Manager.LoadTexture("..\\Resources\\iss.bmp", -1, alpha);
 	g_pStaticVideoImage = g_pSource;
@@ -227,7 +231,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static int brush_size = 10;
 	static int style = 0;
 	static bool canvasresised = false;
-	static int gifFrameNumber = 0;
+	//static int gifFrameNumber = 0;
+	static bool toGif = false;
 	
 	static int click = 0;
 	switch (message)
@@ -278,6 +283,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case 'N':
 			g_ExistsMetaCanvas = false;
+			break;
+		case 'R':
+			toGif = toGif == true? false:true;
+			if (!toGif)
+			{
+				g_pCGIF->CreateGIF();
+			}
 			break;
 		}
 	}
@@ -332,25 +344,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_PAINT:
 	{
-		if (CFrame* pullFrame = g_VP.Pull())
+		/*if (CFrame* pullFrame = g_VP.Pull())
 		{
 			g_pSource = g_Manager.LoadTexture(pullFrame);
 			CFrame* frame = g_Manager.LoadTextureBack(g_pSource);
 
 
-			/*for (int j = 0; j < frame->m_sy; j++)
-			{
-				int pixelnum = 0;
-				for (int i = 0; i < frame->m_sx; i++)
-				{
-					CFrame::PIXEL Color;
-					Color.r = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4)];
-					Color.g = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 1];
-					Color.b = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 2];
-					Color.a = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4)+3];
-					frame->GetPixel(i, j) = Color;
-				}
-			}*/
+			//for (int j = 0; j < frame->m_sy; j++)
+			//{
+			//	int pixelnum = 0;
+			//	for (int i = 0; i < frame->m_sx; i++)
+			//	{
+			//		CFrame::PIXEL Color;
+			//		Color.r = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4)];
+			//		Color.g = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 1];
+			//		Color.b = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 2];
+			//		Color.a = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4)+3];
+			//		frame->GetPixel(i, j) = Color;
+			//	}
+			//}
 
 			//g_pSource = g_Manager.LoadTexture(frame);
 
@@ -367,7 +379,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			UINT frameSize = frame->m_sx*frame->m_sy;
 			uint8_t* uint8_tFrame;
 			uint8_tFrame = new uint8_t[frameSize * 4];
-			/*for (int j = 0; j < frame->m_sy; j++)
+			for (int j = 0; j < frame->m_sy; j++)
 			{
 				for (int i = 0; i < frame->m_sx; i++)
 				{
@@ -393,10 +405,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				GifEnd(g_gifWriter);
 				gifFrameNumber++;
-			}*/
-		}
-
-		/*if (CFrame* pullFrame = g_VP.Pull())
+			}
+		}*/
+		static int width = 0;
+		static int height = 0;
+		if (CFrame* pullFrame = g_VP.Pull())
 		{
 
 			if (!g_ExistsMetaCanvas)
@@ -408,6 +421,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 
 			//Creates a texture2d from the pulled video frame and then deletes the frame
+			width = pullFrame->m_sx;
+			height = pullFrame->m_sy;
 			g_pSource = g_Manager.LoadTexture(pullFrame);
 
 			//Creates an static image for the style 0
@@ -438,6 +453,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		//Initializes textures
 		g_Manager.GetBackBuffer()->GetDesc(&dtd);
+		if (width && height) {
+			dtd.Height = height;
+			dtd.Width = width;
+		}
 		dtd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pMetaCanvasOut);
 		g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pFusionOut);
@@ -466,6 +485,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSFusion->Configure();
 		g_pCSFusion->Execute();
 
+
+		static int framesSkipped = 0;
+		static int skipFrames = 2;
+		if (toGif && framesSkipped++ == skipFrames)
+		{
+			CUFrame* frame;
+			frame = g_Manager.LoadTextureBack(pFusionOut);
+			g_pCGIF->Push(frame);
+			framesSkipped = 0;
+		}
+
+
+
 		g_pCSMC->m_pInput_1 = pFusionOut;
 		g_pCSMC->m_pInput_2 = g_pMetaCanvas;
 		g_pCSMC->m_pOutput_1 = g_Manager.GetBackBuffer();
@@ -493,7 +525,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSALU->m_pInput_1 = pMetaCanvasOut;
 		g_pCSALU->m_pOutput = g_pMetaCanvas;
 		g_pCSALU->Configure((ALU_OPERATION)ALU_COPY);
-		g_pCSALU->Execute();*/
+		g_pCSALU->Execute();
 
 		
 
@@ -550,8 +582,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		s_prev_mny = s_mny;
 
 		//Liberar toda memoria intermedia al terminar de procesar
-		//SAFE_RELEASE(pFusionOut);
-		//SAFE_RELEASE(pMetaCanvasOut);
+		SAFE_RELEASE(pFusionOut);
+		SAFE_RELEASE(pMetaCanvasOut);
 		g_Manager.GetSwapChain()->Present(1, 0);//T-1 sync
 	}
 	ValidateRect(hWnd, NULL);
