@@ -332,11 +332,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_PAINT:
 	{
-		/*if (CFrame* pullFrame = g_VP.Pull())
+		if (CFrame* pullFrame = g_VP.Pull())
 		{
 			g_pSource = g_Manager.LoadTexture(pullFrame);
 			CFrame* frame = g_Manager.LoadTextureBack(g_pSource);
 
+
+			/*for (int j = 0; j < frame->m_sy; j++)
+			{
+				int pixelnum = 0;
+				for (int i = 0; i < frame->m_sx; i++)
+				{
+					CFrame::PIXEL Color;
+					Color.r = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4)];
+					Color.g = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 1];
+					Color.b = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 2];
+					Color.a = uint8_tFrame[(frame->m_sx*j * 4) + (i * 4)+3];
+					frame->GetPixel(i, j) = Color;
+				}
+			}*/
+
+			//g_pSource = g_Manager.LoadTexture(frame);
 
 			D3D11_TEXTURE2D_DESC dtd;
 			//Initializes textures
@@ -345,41 +361,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			
 			g_pCSALU->m_pInput_1 = g_pSource;
 			g_pCSALU->m_pOutput = g_Manager.GetBackBuffer();
-			g_pCSALU->Configure((ALU_OPERATION)ALU_NEG);
+			g_pCSALU->Configure((ALU_OPERATION)ALU_COPY);
 			g_pCSALU->Execute();
 
 			UINT frameSize = frame->m_sx*frame->m_sy;
 			uint8_t* uint8_tFrame;
-			uint8_tFrame = new uint8_t[frameSize*4];
-			for (int j = 0; j < frame->m_sy; j++)
+			uint8_tFrame = new uint8_t[frameSize * 4];
+			/*for (int j = 0; j < frame->m_sy; j++)
 			{
 				for (int i = 0; i < frame->m_sx; i++)
 				{
 					CFrame::PIXEL Color = frame->GetPixel(i, j);
-					uint8_tFrame[frame->m_sx*j + (i*4)] =   (uint8_t)Color.r;
-					uint8_tFrame[frame->m_sx*j + (i*4)+1] = (uint8_t)Color.g;
-					uint8_tFrame[frame->m_sx*j + (i*4)+2] = (uint8_t)Color.b;
-					uint8_tFrame[frame->m_sx*j + (i*4)+3] = (uint8_t)Color.a;
+					uint8_tFrame[(frame->m_sx*j * 4) + (i * 4)] = (uint8_t)Color.r;
+					uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 1] = (uint8_t)Color.g;
+					uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 2] = (uint8_t)Color.b;
+					uint8_tFrame[(frame->m_sx*j * 4) + (i * 4) + 3] = (uint8_t)Color.a;
 				}
 			}
 
-			GifWriter gifWriter;
+			
 			if (gifFrameNumber == 0)
 			{
-				GifBegin(&gifWriter, "..\\Resources\\myGif.gif", frame->m_sx, frame->m_sy, 100);
+				GifBegin(g_gifWriter, "..\\Resources\\myGif.gif", frame->m_sx, frame->m_sy, 2);
 			}
 			if (gifFrameNumber < 100)
 			{
-				GifWriteFrame(&gifWriter, uint8_tFrame, frame->m_sx, frame->m_sy, 100);
+				GifWriteFrame(g_gifWriter, uint8_tFrame, frame->m_sx, frame->m_sy, 2);
 				gifFrameNumber++;
 			}
 			if (gifFrameNumber == 100)
 			{
-				GifEnd(&gifWriter);
-			}
-		}*/
+				GifEnd(g_gifWriter);
+				gifFrameNumber++;
+			}*/
+		}
 
-		if (CFrame* pullFrame = g_VP.Pull())
+		/*if (CFrame* pullFrame = g_VP.Pull())
 		{
 
 			if (!g_ExistsMetaCanvas)
@@ -476,7 +493,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSALU->m_pInput_1 = pMetaCanvasOut;
 		g_pCSALU->m_pOutput = g_pMetaCanvas;
 		g_pCSALU->Configure((ALU_OPERATION)ALU_COPY);
-		g_pCSALU->Execute();
+		g_pCSALU->Execute();*/
 
 		
 
