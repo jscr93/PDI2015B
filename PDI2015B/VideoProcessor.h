@@ -2,7 +2,7 @@
 #include "..\Video\AtWareVideoCapture.h"
 #include "Frame.h"
 #include <list>
-#include <Windows.h>
+
 using namespace std;
 class CVideoProcessor :
 	public IAtWareSampleGrabberCB

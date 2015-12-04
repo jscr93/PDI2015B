@@ -14,6 +14,7 @@
 #include "CSMetaCanvas.h"
 #include "CSFusion.h"
 #include "GIFManager.h"
+#include "TextureQueue.h"
 //#include "gif.h"
 
 #define MAX_LOADSTRING 100
@@ -34,6 +35,7 @@ CVideoProcessor g_VP;								//The video processor
 CCSMetaCanvas* g_pCSMC;
 CCSFusion* g_pCSFusion;
 CGIFManager* g_pCGIF;
+CTextureQueue* g_pTQ;
 bool g_ExistsStaticVideoImage;
 bool g_ExistsMetaCanvas;
 //GifWriter* g_gifWriter;
@@ -171,6 +173,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		return FALSE;
 
 	g_pCGIF = new CGIFManager();
+	g_pTQ = new CTextureQueue();
+
 
 	//g_gifWriter = new GifWriter;
 
@@ -233,6 +237,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static bool canvasresised = false;
 	//static int gifFrameNumber = 0;
 	static bool toGif = false;
+	static bool record = false;
 	
 	static int click = 0;
 	switch (message)
@@ -281,15 +286,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case '0':
 			style = 0;
 			break;
+		case '2':
+			style = 2;
 		case 'N':
 			g_ExistsMetaCanvas = false;
 			break;
-		case 'R':
+		case 'G':
 			toGif = toGif == true? false:true;
 			if (!toGif)
 			{
 				g_pCGIF->CreateGIF();
 			}
+			break;
+		case 'R':
+			record = record == true ? false : true;
 			break;
 		}
 	}
@@ -477,6 +487,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			g_pCSALU->Execute();
 			pImageModified = pImageModifiedOut;
 		}
+		//Style 3
+		else if (style == 2)
+		{
+			/*g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pImageModifiedOut);
+			g_pCSALU->m_pInput_1 = g_pTQ->Pull();
+			g_pCSALU->m_pOutput = pImageModifiedOut;
+			g_pCSALU->Configure((ALU_OPERATION)ALU_NEG);
+			g_pCSALU->Execute();*/
+			pImageModified = g_pTQ->Pull();
+			if (!pImageModified)
+				pImageModified = g_pSource;
+		}
 
 		g_pCSFusion->m_pInput_1 = g_pSource;
 		g_pCSFusion->m_pInput_2 = pImageModified;
@@ -485,6 +507,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSFusion->Configure();
 		g_pCSFusion->Execute();
 
+
+		if (record)
+		{
+			ID3D11Texture2D* pTextureToRecord;
+			g_Manager.GetDevice()->CreateTexture2D(&dtd, NULL, &pTextureToRecord);
+
+			g_pCSALU->m_pInput_1 = pFusionOut;
+			g_pCSALU->m_pOutput = pTextureToRecord;
+			g_pCSALU->Configure((ALU_OPERATION)ALU_COPY);
+			g_pCSALU->Execute();
+
+			g_pTQ->Push(pTextureToRecord);
+		}
 
 		static int framesSkipped = 0;
 		static int skipFrames = 2;
