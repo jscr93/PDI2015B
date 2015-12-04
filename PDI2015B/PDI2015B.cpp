@@ -332,7 +332,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_PAINT:
 	{
-		if (CFrame* pullFrame = g_VP.Pull())
+		/*if (CFrame* pullFrame = g_VP.Pull())
 		{
 			g_pSource = g_Manager.LoadTexture(pullFrame);
 			CFrame* frame = g_Manager.LoadTextureBack(g_pSource);
@@ -356,19 +356,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				for (int i = 0; i < frame->m_sx; i++)
 				{
 					CFrame::PIXEL Color = frame->GetPixel(i, j);
-					uint8_tFrame[frame->m_sx*j + (i*4)] = Color.r;
-					uint8_tFrame[frame->m_sx*j + (i*4)+1] = Color.g;
-					uint8_tFrame[frame->m_sx*j + (i*4)+2] = Color.b;
-					uint8_tFrame[frame->m_sx*j + (i*4)+3] = Color.a;
+					uint8_tFrame[frame->m_sx*j + (i*4)] =   (uint8_t)Color.r;
+					uint8_tFrame[frame->m_sx*j + (i*4)+1] = (uint8_t)Color.g;
+					uint8_tFrame[frame->m_sx*j + (i*4)+2] = (uint8_t)Color.b;
+					uint8_tFrame[frame->m_sx*j + (i*4)+3] = (uint8_t)Color.a;
 				}
 			}
 
 			GifWriter gifWriter;
 			if (gifFrameNumber == 0)
 			{
-				GifBegin(&gifWriter, "..\\Resources\\myGif.gif", frame->m_sx, frame->m_sy, 1000);
+				GifBegin(&gifWriter, "..\\Resources\\myGif.gif", frame->m_sx, frame->m_sy, 100);
 			}
-			while (gifFrameNumber < 100)
+			if (gifFrameNumber < 100)
 			{
 				GifWriteFrame(&gifWriter, uint8_tFrame, frame->m_sx, frame->m_sy, 100);
 				gifFrameNumber++;
@@ -377,9 +377,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				GifEnd(&gifWriter);
 			}
-		}
+		}*/
 
-		/*if (CFrame* pullFrame = g_VP.Pull())
+		if (CFrame* pullFrame = g_VP.Pull())
 		{
 
 			if (!g_ExistsMetaCanvas)
@@ -476,7 +476,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_pCSALU->m_pInput_1 = pMetaCanvasOut;
 		g_pCSALU->m_pOutput = g_pMetaCanvas;
 		g_pCSALU->Configure((ALU_OPERATION)ALU_COPY);
-		g_pCSALU->Execute();*/
+		g_pCSALU->Execute();
 
 		
 
